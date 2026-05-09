@@ -71,7 +71,7 @@
   (require '[big-config.core :as core])
 
   (defmethod pluggable/handle-step ::my-custom-step
-    [step step-fns opts]
+    [_f step step-fns opts]
     ;; Your custom logic here
     (println \"Executing custom step!\")
     (core/ok opts))
@@ -405,7 +405,7 @@
 
 (comment
   (debug tap-values
-    (defmethod pluggable/handle-step ::foo [step step-fns opts]
+    (defmethod pluggable/handle-step ::foo [_f step step-fns opts]
       (tap> [step step-fns opts])
       (merge opts (core/ok) {step "custom"}))
     (remove-method pluggable/handle-step ::lock)

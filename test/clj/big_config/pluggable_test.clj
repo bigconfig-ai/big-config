@@ -25,7 +25,7 @@
                                :wire-fn wire-fn})]
 
       (defmethod sut/handle-step ::start
-        [_step _step-fns opts]
+        [_f _step _step-fns opts]
         (merge opts (core/ok) {:overridden true}))
 
       (try
@@ -46,7 +46,7 @@
                                :wire-fn wire-fn})]
 
       (defmethod sut/handle-step ::middle
-        [_step _step-fns opts]
+        [_f _step _step-fns opts]
         (merge opts (core/ok) {:middle-val 123}))
 
       (try

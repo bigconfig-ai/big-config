@@ -10,7 +10,7 @@
 
   The `:default` implementation calls the original function provided by the
   `:wire-fn` in `->workflow*`."
-  (fn [step _step-fns _opts] step))
+  (fn [_f step _step-fns _opts] step))
 
 (defn ->workflow*
   "Similar to `core/->workflow`, but wraps each step execution in the `handle-step`
@@ -23,7 +23,7 @@
                              (let [method (.getMethod ^clojure.lang.MultiFn handle-step step)
                                    default-method (.getMethod ^clojure.lang.MultiFn handle-step :default)]
                                (if (and method (not= method default-method))
-                                 (handle-step step step-fns opts)
+                                 (handle-step f step step-fns opts)
                                  (f opts))))
                            next-step]))
           wf (core/->workflow {:first-step first-step
@@ -34,6 +34,11 @@
 
 (comment
   (debug tap-values
+    (defmethod handle-step ::start
+      [f step step-fns opts]
+      (merge opts (core/ok) {step :custom
+                             :f (f opts)
+                             :step-fns step-fns}))
     (let [wf (->workflow* {:first-step ::start
                            :last-step ::end
                            :wire-fn (fn [step _]

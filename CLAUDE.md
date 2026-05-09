@@ -93,7 +93,7 @@ Override or add steps via `big-config.pluggable/handle-step`:
 (require '[big-config.core :as core])
 
 (defmethod pluggable/handle-step ::my-step
-  [step step-fns opts]
+  [_f step step-fns opts]
   (println "Custom step!")
   (core/ok opts))
 ```
