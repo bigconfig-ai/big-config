@@ -1,0 +1,1436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BigConfig — Manual</title>
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/clojure.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dockerfile.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f7f8fa;
+    --bg-code: #f5f6f8;
+    --text: #1f2328;
+    --text-muted: #57606a;
+    --border: #d0d7de;
+    --border-soft: #eaeef2;
+    --accent: #2f6feb;
+    --accent-soft: #ddebff;
+    --warn: #9a6700;
+    --danger: #cf222e;
+    --kbd-bg: #f6f8fa;
+    --maxw-content: 820px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre, kbd, samp {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 13px;
+  }
+  code { background: var(--bg-code); padding: 1px 5px; border-radius: 4px; }
+  pre { margin: 14px 0; }
+  pre code {
+    display: block;
+    padding: 14px 16px;
+    border: 1px solid var(--border-soft);
+    border-radius: 6px;
+    background: var(--bg-soft);
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  kbd {
+    background: var(--kbd-bg);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  hr { border: 0; border-top: 1px solid var(--border-soft); margin: 32px 0; }
+
+  /* layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    min-height: 100vh;
+  }
+  aside.sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid var(--border-soft);
+    background: var(--bg-soft);
+    padding: 24px 18px;
+  }
+  .sidebar .brand {
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+    padding: 0 6px 10px;
+    border-bottom: 1px solid var(--border-soft);
+    margin-bottom: 10px;
+  }
+  .sidebar .brand small {
+    display: block;
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .sidebar nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 6px 0 14px;
+  }
+  .sidebar nav .group-title {
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 12px 6px 4px;
+  }
+  .sidebar nav a {
+    display: block;
+    color: var(--text);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13.5px;
+  }
+  .sidebar nav a:hover {
+    background: var(--accent-soft);
+    text-decoration: none;
+  }
+  .sidebar nav a.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  main {
+    padding: 40px 56px 80px;
+    max-width: calc(var(--maxw-content) + 112px);
+  }
+  main h1 {
+    font-size: 32px;
+    margin: 0 0 4px;
+    letter-spacing: -0.015em;
+  }
+  main .tagline {
+    color: var(--text-muted);
+    font-size: 16px;
+    margin-bottom: 24px;
+  }
+  main h2 {
+    font-size: 22px;
+    margin: 44px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-soft);
+    letter-spacing: -0.01em;
+  }
+  main h3 {
+    font-size: 17px;
+    margin: 28px 0 8px;
+  }
+  main h4 {
+    font-size: 14px;
+    margin: 20px 0 6px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  main p, main ul, main ol { max-width: var(--maxw-content); }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0 18px;
+    font-size: 13.5px;
+  }
+  th, td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-soft);
+    vertical-align: top;
+  }
+  th { background: var(--bg-soft); font-weight: 600; }
+  td code { white-space: nowrap; }
+
+  .callout {
+    background: var(--bg-soft);
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin: 14px 0;
+    font-size: 14px;
+  }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.danger { border-left-color: var(--danger); }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 14px 0;
+  }
+  .card {
+    border: 1px solid var(--border-soft);
+    border-radius: 6px;
+    padding: 14px;
+    background: var(--bg);
+  }
+  .card h4 {
+    margin: 0 0 6px;
+    color: var(--text);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 14px;
+  }
+  .card p { margin: 0; color: var(--text-muted); font-size: 13.5px; }
+
+  .badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    vertical-align: middle;
+  }
+  .badge.deprecated { background: #fff1e0; color: var(--warn); }
+  .badge.required { background: #ffe6e8; color: var(--danger); }
+  .badge.optional { background: #eef0f3; color: var(--text-muted); }
+
+  .anchor {
+    color: var(--border);
+    margin-left: 6px;
+    font-weight: 400;
+    text-decoration: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  h2:hover .anchor, h3:hover .anchor { opacity: 1; }
+  details { margin: 8px 0; }
+  summary { cursor: pointer; font-weight: 500; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    aside.sidebar {
+      position: static;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    main { padding: 24px 20px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<aside class="sidebar">
+  <div class="brand">
+    BigConfig
+    <small>Workflow &amp; template engine for IaC</small>
+  </div>
+  <nav id="toc">
+    <div class="group-title">Start</div>
+    <ul>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#why">Why BigConfig</a></li>
+      <li><a href="#install">Installation</a></li>
+      <li><a href="#repo-layout">Repository layout</a></li>
+    </ul>
+    <div class="group-title">Core</div>
+    <ul>
+      <li><a href="#opts">The opts map</a></li>
+      <li><a href="#cli-dsl">CLI DSL</a></li>
+      <li><a href="#workflow-engine">Workflow engine</a></li>
+      <li><a href="#step-fns">Step functions</a></li>
+      <li><a href="#pluggable">Pluggable steps</a></li>
+      <li><a href="#workflow-types">Workflow types</a></li>
+    </ul>
+    <div class="group-title">Built-ins</div>
+    <ul>
+      <li><a href="#builtin-steps">Built-in steps</a></li>
+      <li><a href="#render">Render</a></li>
+      <li><a href="#lock">Lock / Unlock</a></li>
+      <li><a href="#run">Run (shell)</a></li>
+      <li><a href="#git">Git helpers</a></li>
+      <li><a href="#store">Store (Redis)</a></li>
+      <li><a href="#system">System</a></li>
+      <li><a href="#bigtofu">BigTofu</a></li>
+    </ul>
+    <div class="group-title">Tooling</div>
+    <ul>
+      <li><a href="#templates">Templates</a></li>
+      <li><a href="#bc-pars">BC_PAR_ overrides</a></li>
+      <li><a href="#utils">Utils &amp; macros</a></li>
+      <li><a href="#selmer">Selmer extras</a></li>
+      <li><a href="#deps">Dependencies</a></li>
+    </ul>
+    <div class="group-title">Project</div>
+    <ul>
+      <li><a href="#dev-workflow">Development workflow</a></li>
+      <li><a href="#build">Build</a></li>
+      <li><a href="#ci">CI/CD</a></li>
+      <li><a href="#conventions">Conventions</a></li>
+      <li><a href="#avoid">What to avoid</a></li>
+      <li><a href="#changelog">Changelog</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ul>
+  </nav>
+</aside>
+
+<main>
+
+<h1>BigConfig</h1>
+<p class="tagline">
+  A Clojure/Babashka workflow and template engine for infrastructure-as-code automation —
+  a <em>zero-cost build step</em> that uses Clojure to generate config files and orchestrate
+  CLI tools (Terraform/OpenTofu, Ansible, Kubectl, &hellip;).
+</p>
+
+<section id="overview">
+<h2>Overview <a href="#overview" class="anchor">#</a></h2>
+<p>
+  BigConfig bridges general-purpose programming (Clojure/Babashka) and specialized CLI tools.
+  It composes small, independently testable <em>tool workflows</em> into pipelines, renders
+  configuration via a Selmer-based template engine, and coordinates execution with a
+  client-side Git-tag locking mechanism. The library is consumed as a Clojure tool
+  (<code>clojure -Ttools</code>) or via Babashka tasks (<code>bb</code>).
+</p>
+<div class="grid-2">
+  <div class="card"><h4>Workflow</h4><p>State-driven engine that threads an <code>opts</code> map through pluggable steps.</p></div>
+  <div class="card"><h4>Render</h4><p>Selmer-based template engine inspired by <code>deps-new</code>.</p></div>
+  <div class="card"><h4>Lock</h4><p>Client-side Atlantis: pessimistic locking via Git tags.</p></div>
+  <div class="card"><h4>Store</h4><p>Redis-backed event-sourcing store with ACID-like guarantees.</p></div>
+  <div class="card"><h4>System</h4><p>Lifecycle management alternative to Integrant.</p></div>
+  <div class="card"><h4>BigTofu</h4><p>Clojure constructs for generating OpenTofu/Terraform HCL.</p></div>
+</div>
+</section>
+
+<section id="why">
+<h2>Why BigConfig <a href="#why" class="anchor">#</a></h2>
+<ul>
+  <li><strong>Zero-cost build step:</strong> use Clojure to generate JSON/YAML/HCL config, then execute tools seamlessly.</li>
+  <li><strong>Functional orchestration:</strong> sequence multiple tools into a unified lifecycle (<code>render</code> → <code>lock</code> → <code>tofu apply</code> → <code>unlock</code>).</li>
+  <li><strong>Serverless locking:</strong> client-side, Git-based locks coordinate team work without a central server like Atlantis.</li>
+  <li><strong>Extreme portability:</strong> develop and debug locally with a REPL, then run the exact same workflow in CI with parity.</li>
+  <li><strong>Decoupled data sharing:</strong> orchestrators map outputs of one tool into params of the next, so a Hetzner workflow can be swapped for AWS without changes to downstream Ansible.</li>
+</ul>
+</section>
+
+<section id="install">
+<h2>Installation <a href="#install" class="anchor">#</a></h2>
+<p>BigConfig is typically used as a Clojure tool or via Babashka.</p>
+<pre><code class="language-bash"># Install BigConfig as a Clojure tool
+clojure -Ttools install-latest :lib io.github.amiorin/big-config :as big-config
+
+# Print help for all available templates
+clojure -A:deps -Tbig-config help/doc
+
+# Scaffold a new project using the `package` template
+clojure -Tbig-config package \
+  :owner acme :repository infra :ssh-key 123456 :target-dir my-infra</code></pre>
+<p>The published artifact name is <code>motain/big-login</code> (see <code>build.clj</code>). Versions follow <code>0.3.&lt;git-commit-count&gt;</code>.</p>
+</section>
+
+<section id="repo-layout">
+<h2>Repository layout <a href="#repo-layout" class="anchor">#</a></h2>
+<pre><code class="language-bash">big-config/
+├── src/clj/            # Production source (Clojure)
+│   ├── big_config/     # Core library namespaces
+│   └── big_tofu/       # OpenTofu/Terraform HCL constructs
+├── test/clj/           # Test files (mirrors src layout)
+├── test/resources/     # Shared test data
+├── test/fixtures/      # Pre-built template fixtures
+├── resources/
+│   ├── big-config/     # Template library (package, devenv, action, …)
+│   └── quickdoc/       # API doc generation config
+├── env/
+│   ├── dev/clj/        # Dev REPL helpers
+│   └── test/resources/ # Test-env resources
+├── .big-config/        # Internal self-bootstrapping config
+├── .github/workflows/  # CI/CD (ci.yml)
+├── .clj-kondo/         # Linter config
+├── .lsp/               # clojure-lsp config
+├── deps.edn            # Clojure deps and aliases
+├── bb.edn              # Babashka tasks
+├── build.clj           # tools.build script (uberjar)
+├── devenv.nix          # Nix dev environment
+└── devenv.yaml         # devenv packages list</code></pre>
+
+<h3>Core namespaces</h3>
+<table>
+  <thead><tr><th>Namespace</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>big-config.core</code></td><td>Foundational primitives: <code>ok</code>, <code>choice</code>, <code>-&gt;workflow</code>, <code>-&gt;step-fn</code>.</td></tr>
+    <tr><td><code>big-config.workflow</code></td><td>High-level orchestration: <code>-&gt;workflow*</code>, <code>run-steps</code>, <code>parse-args</code>, <code>prepare</code>.</td></tr>
+    <tr><td><code>big-config.pluggable</code></td><td>Multimethod extensibility: <code>handle-step</code>, <code>-&gt;workflow*</code>.</td></tr>
+    <tr><td><code>big-config.render</code></td><td>Selmer-based template engine (<code>render</code>, <code>templates</code>).</td></tr>
+    <tr><td><code>big-config.lock</code></td><td>Git-tag pessimistic locking.</td></tr>
+    <tr><td><code>big-config.unlock</code></td><td>Force-release locks (<code>unlock-any</code>).</td></tr>
+    <tr><td><code>big-config.run</code></td><td>Shell execution: <code>generic-cmd</code>, <code>run-cmds</code>.</td></tr>
+    <tr><td><code>big-config.store</code></td><td>Redis-backed event-sourcing store.</td></tr>
+    <tr><td><code>big-config.system</code></td><td>Lifecycle management (Integrant alternative).</td></tr>
+    <tr><td><code>big-config.git</code></td><td>Git helpers (<code>check</code>, <code>git-push</code>).</td></tr>
+    <tr><td><code>big-config.step</code></td><td>Legacy step DSL (<code>tofu:plan</code> → <code>tofu plan</code>).</td></tr>
+    <tr><td><code>big-config.step-fns</code></td><td>Step-function middleware (<code>-&gt;exit-step-fn</code>, <code>log-step-fn</code>, <code>bling-step-fn</code>, …).</td></tr>
+    <tr><td><code>big-config.utils</code></td><td>Helpers: <code>deep-merge</code>, <code>debug</code> macro, <code>keyword-&gt;path</code>, Specter walkers.</td></tr>
+    <tr><td><code>big-config.selmer-filters</code></td><td>Custom Selmer filters and whitespace control.</td></tr>
+    <tr><td><code>big-config.toml</code></td><td>TOML parsing via <code>yj</code>.</td></tr>
+    <tr><td><code>big-config.tools</code></td><td>Template scaffolding CLI (<code>package</code>, <code>devenv</code>, <code>action</code>, …).</td></tr>
+    <tr><td><code>big-config.build</code></td><td>Build orchestration (<code>-&gt;build</code> wrapping a build function).</td></tr>
+    <tr><td><code>big-tofu.core</code></td><td>OpenTofu <code>To</code> protocol, <code>Construct</code> record, ARN helpers.</td></tr>
+    <tr><td><code>big-tofu.create</code></td><td>BigTofu stdlib (<code>bucket</code>, <code>sqs</code>, <code>kms</code>, <code>provider</code>).</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="opts">
+<h2>The <code>opts</code> map <a href="#opts" class="anchor">#</a></h2>
+<p>
+  Every workflow function receives and returns an <code>opts</code> map. The engine threads
+  it through each step. Reserved top-level keys live in the <code>big-config</code> namespace
+  (commonly aliased as <code>bc</code>):
+</p>
+<table>
+  <thead><tr><th>Key</th><th>Type</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>:big-config/exit</code></td><td><code>nat-int?</code></td><td>Exit code (0 = success). Required after every step.</td></tr>
+    <tr><td><code>:big-config/err</code></td><td><code>string?</code></td><td>Error message.</td></tr>
+    <tr><td><code>:big-config/stack-trace</code></td><td><code>string?</code></td><td>Exception stack-trace (joined newline-separated).</td></tr>
+    <tr><td><code>:big-config/env</code></td><td><code>:repl</code>, <code>:lib</code>, <code>:shell</code></td><td>Selects shell-output behavior and exit handling.</td></tr>
+    <tr><td><code>:big-config/procs</code></td><td>vector</td><td>Accumulated child-process results.</td></tr>
+    <tr><td><code>:big-config/steps</code></td><td>vector</td><td>Steps recorded by <code>log-step-fn</code>.</td></tr>
+  </tbody>
+</table>
+
+<h3>Minimal step</h3>
+<pre><code class="language-clojure">(ns my.app
+  (:require [big-config.core :as core]))
+
+(defn my-step [opts]
+  ;; do work…
+  (core/ok opts))            ; sets :big-config/exit 0
+
+(defn failing-step [opts]
+  (merge opts {:big-config/exit 1
+               :big-config/err  "Something went wrong"}))</code></pre>
+<p>
+  The engine catches exceptions thrown by step functions, merges <code>ex-data</code> into
+  <code>opts</code>, and sets <code>:big-config/exit 1</code> with the exception message and
+  stack trace. Throw <code>ex-info</code> for structured errors that should propagate.
+</p>
+<p>
+  An <code>opts</code> map is what the engine threads forward. If a step returns
+  <code>nil</code> or sets a non-natural <code>:big-config/exit</code>, the engine throws —
+  contracts are enforced.
+</p>
+</section>
+
+<section id="cli-dsl">
+<h2>CLI DSL <a href="#cli-dsl" class="anchor">#</a></h2>
+<p>BigConfig provides a concise DSL for running workflows from a shell via Babashka:</p>
+<pre><code class="language-bash">bb render lock tofu:init tofu:apply -- alpha prod
+#  │      │    │                       │     └── profile
+#  │      │    │                       └── module
+#  step   step colon-syntax (tofu init)</code></pre>
+<ul>
+  <li><strong>Steps</strong> (e.g. <code>render</code>, <code>lock</code>) are predefined workflow names.</li>
+  <li><strong>Colon syntax:</strong> <code>tool:subcommand</code> is rewritten to <code>tool subcommand</code> for shell execution.</li>
+  <li><strong>Separator <code>--</code></strong>: anything after is forwarded as raw arguments to <code>exec</code>.</li>
+</ul>
+
+<h3>Examples</h3>
+<pre><code class="language-bash"># exec vs. direct mapping (functionally identical)
+bb exec -- alpha prod ansible-playbook main.yml
+bb ansible-playbook:main.yml -- alpha prod
+
+# Global arguments (after `--`) apply to all commands
+bb tofu:apply tofu:destroy -- alpha prod -auto-approve
+
+# Inline arguments (per command)
+bb tofu:apply:-auto-approve tofu:destroy:-auto-approve -- alpha prod
+
+# Tool mapping
+# tofu:init                  -> tofu init
+# tofu:plan                  -> tofu plan
+# ansible-playbook:main.yml  -> ansible-playbook main.yml</code></pre>
+
+<h3>Zero-cost workflow alias</h3>
+<p>You can hide BigConfig behind a shell alias that wraps your standard tools in a safety-first pipeline:</p>
+<pre><code class="language-bash">alias tofu="bb render git-check lock exec git-push unlock-any -- alpha prod tofu"</code></pre>
+
+<h3>Argument parsing</h3>
+<p>The DSL is parsed by <code>workflow/parse-args</code>:</p>
+<pre><code class="language-clojure">(workflow/parse-args "render")
+;; => {:big-config.workflow/steps    [:render]
+;;     :big-config.run/cmds          []}
+
+(workflow/parse-args ["tofu:init" "tofu:apply" "--" "alpha" "prod"])
+;; => {:big-config.workflow/steps    [:exec]
+;;     :big-config.run/cmds          ["tofu init" "tofu apply" "alpha prod"]}</code></pre>
+<p>
+  The set of recognized step keywords lives in a dynamic var
+  <code>workflow/*parse-args-steps*</code>. Default value:
+  <code>#{:lock :git-check :render :create :delete :exec :git-push :unlock-any}</code>.
+  Unrecognized tokens are treated as shell commands and routed through the implicit
+  <code>:exec</code> step.
+</p>
+</section>
+
+<section id="workflow-engine">
+<h2>Workflow engine <a href="#workflow-engine" class="anchor">#</a></h2>
+<p>
+  At the heart of BigConfig is <code>big-config.core/-&gt;workflow</code>. It produces a
+  function that, given <em>step functions</em> (middleware) and an <code>opts</code> map,
+  loops through steps, threads <code>opts</code>, and decides the next step.
+</p>
+
+<h3><code>-&gt;workflow</code></h3>
+<pre><code class="language-clojure">(ns my.app
+  (:require [big-config.core :as core]))
+
+(core/->workflow
+  {:first-step ::start          ; required — qualified keyword
+   :last-step  ::end            ; optional, defaults to `::end` in the same ns
+   :wire-fn    (fn [step step-fns]
+                 (case step
+                   ::start [my-fn ::end]
+                   ::end   [identity]))
+   :next-fn    nil})            ; optional — for branching</code></pre>
+<p>The <code>wire-fn</code> receives the current step and the resolved step-fns, returning
+<code>[step-impl next-step]</code>. The default <code>next-fn</code> chooses the next step on
+success and jumps to <code>last-step</code> on failure, using <code>core/choice</code>.</p>
+
+<h3>Branching with <code>next-fn</code></h3>
+<p>Use <code>choice</code> to branch on exit:</p>
+<pre><code class="language-clojure">(def lock
+  (core/->workflow
+    {:first-step ::generate-lock-id
+     :wire-fn (fn [step _]
+                (case step
+                  ::generate-lock-id [generate-lock-id ::delete-tag]
+                  ::delete-tag       [delete-tag ::create-tag]
+                  ::create-tag       [create-tag ::push-tag]
+                  ::push-tag         [push-tag   ::get-remote-tag]
+                  ::get-remote-tag   [(comp get-remote-tag delete-tag) ::read-tag]
+                  ::read-tag         [read-tag   ::check-tag]
+                  ::check-tag        [check-tag  ::end]
+                  ::end              [identity]))
+     :next-fn (fn [step next-step opts]
+                (case step
+                  ::end       [nil opts]
+                  ::push-tag  (core/choice {:on-success ::end
+                                            :on-failure next-step
+                                            :opts opts})
+                  ::delete-tag [next-step opts]
+                  (core/choice {:on-success next-step
+                                :on-failure ::end
+                                :opts opts})))}))</code></pre>
+
+<h3>Invocation forms</h3>
+<p>A workflow function supports several arities:</p>
+<pre><code class="language-clojure">(wf)                    ; => [first-step last-step]
+(wf step-fns opts)      ; canonical
+</section>
+
+<section id="step-fns">
+<h2>Step functions (middleware) <a href="#step-fns" class="anchor">#</a></h2>
+<p>
+  A <strong>step function</strong> is middleware around an individual step. It receives
+  the step implementation function, the step keyword, and <code>opts</code> — and must
+  return an updated <code>opts</code>.
+</p>
+<p>
+  <code>core/-&gt;step-fn</code> is a convenience constructor that accepts <code>:before-f</code>
+  and <code>:after-f</code> side-effect callbacks of arity <code>[step opts]</code>.
+  These are typically used for logging, terminating the process, or printing errors.
+</p>
+<pre><code class="language-clojure">(require '[big-config.core :as core])
+
+(def log-fn
+  (core/->step-fn
+    {:before-f (fn [step opts] (println "→" step))
+     :after-f  (fn [step opts] (println "✓" step))}))</code></pre>
+
+<h3>Built-in step functions (<code>big-config.step-fns</code>)</h3>
+<table>
+  <thead><tr><th>Function</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>-&gt;exit-step-fn</code></td><td>When the workflow reaches the supplied end step and <code>:big-config/env</code> is not <code>:repl</code>, calls <code>System/exit</code> with the workflow exit code.</td></tr>
+    <tr><td><code>-&gt;print-error-step-fn</code></td><td>On non-zero exit at end, prints the error in red and writes the stack-trace to <code>/tmp/big-config-….txt</code>.</td></tr>
+    <tr><td><code>log-step-fn</code></td><td>Appends each step keyword to <code>:big-config/steps</code> for later inspection.</td></tr>
+    <tr><td><code>bling-step-fn</code></td><td>Colored step-progress reporter via <code>paintparty/bling</code>.</td></tr>
+    <tr><td><code>tap-step-fn</code></td><td>Emits <code>[step :before/:after opts]</code> tuples through <code>tap&gt;</code> — handy with the <code>debug</code> macro.</td></tr>
+  </tbody>
+</table>
+<p><em>Note:</em> step-fns are <strong>composed in reverse</strong> order via the engine,
+so the first step-fn in the vector ends up <em>outermost</em>.</p>
+</section>
+
+<section id="pluggable">
+<h2>Pluggable steps (multimethod) <a href="#pluggable" class="anchor">#</a></h2>
+<p>
+  <code>big-config.pluggable</code> provides <code>-&gt;workflow*</code>, a drop-in replacement
+  that wraps each step in a multimethod lookup. Whenever the
+  <code>handle-step</code> multimethod has a defmethod for a given step keyword, it
+  replaces the implementation provided by <code>wire-fn</code>. Otherwise the original
+  function runs.
+</p>
+<pre><code class="language-clojure">(require '[big-config.pluggable :as pluggable]
+         '[big-config.core      :as core]
+         '[big-config.workflow  :as workflow])
+
+(defmethod pluggable/handle-step ::my-step
+  [step step-fns opts]
+  (println "Custom step!")
+  (core/ok opts))
+
+;; Register the step keyword so the DSL parser recognizes it
+(binding [workflow/*parse-args-steps*
+          (conj workflow/*parse-args-steps* :my-step)]
+  (workflow/parse-args ["my-step" "render"]))</code></pre>
+<div class="callout">
+  <strong>Tip</strong>
+  Use <code>remove-method</code> to unhook a custom step, e.g. while testing:
+  <pre><code class="language-clojure">(remove-method pluggable/handle-step ::lock)</code></pre>
+</div>
+</section>
+
+<section id="workflow-types">
+<h2>Workflow types <a href="#workflow-types" class="anchor">#</a></h2>
+<table>
+  <thead><tr><th>Type</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>tool-workflow</strong></td>
+      <td>Renders templates and executes one CLI tool. The fundamental unit. Built with <code>workflow/run-steps</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>comp-workflow</strong></td>
+      <td>Sequences multiple tool workflows into a unified lifecycle (<code>create</code>, <code>delete</code>). Built with <code>workflow/-&gt;workflow*</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>system-workflow</strong></td>
+      <td>Lifecycle for background system components (Integrant alternative). Lives in <code>big-config.system</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Tool workflow</h3>
+<p>Tool workflows wrap <code>render</code>, <code>exec</code>, <code>git-*</code>, and <code>(un)lock</code> steps for one tool. They are defined in two layers — the library function and the Babashka entry point:</p>
+<pre><code class="language-clojure">(ns wf
+  (:require [big-config.render   :as render]
+            [big-config.workflow :as workflow]))
+
+(defn tofu
+  [step-fns opts]
+  (let [opts (workflow/prepare
+               {::workflow/name ::tofu
+                ::render/templates [{:template "tofu"
+                                     :overwrite true
+                                     :transform [["tofu" :raw]]}]}
+               opts)]
+    (workflow/run-steps step-fns opts)))
+
+(defn tofu*
+  [args & [opts]]
+  (let [opts (merge (workflow/parse-args args) opts)]
+    (tofu [] opts)))</code></pre>
+<p>And wired up in <code>bb.edn</code>:</p>
+<pre><code class="language-clojure">{:deps {group/artifact {:local/root "."}}
+ :tasks
+ {:requires ([wf :as wf])
+  tofu     {:doc  "bb tofu render tofu:init tofu:apply:-auto-approve"
+            :task (wf/tofu* *command-line-args*)}
+  ansible  {:doc  "bb ansible render -- ansible-playbook main.yml"
+            :task (wf/ansible* *command-line-args*)}
+  resource {:doc  "bb resource create"
+            :task (wf/resource* *command-line-args*)}}}</code></pre>
+
+<h3>Composite workflow</h3>
+<p>
+  Composite workflows orchestrate multiple tool workflows through a <code>:pipeline</code>
+  of <code>[tool-keyword [args opts-fn]]</code> pairs. The <code>opts-fn</code> is
+  the glue: it inspects outputs of previous steps (for example by running
+  <code>tofu show --json</code>) and maps them into <code>::workflow/params</code> for the
+  next tool — keeping downstream tools (Ansible) decoupled from upstream providers
+  (Tofu, AWS, Hetzner, …).
+</p>
+<pre><code class="language-clojure">(defn opts-fn [opts]
+  (let [ip (-> (p/shell {:dir (workflow/path opts ::tool/tofu)
+                         :out :string}
+                        "tofu show --json")
+               :out
+               (json/parse-string keyword)
+               (->> (s/select-one
+                     [:values :root_module :resources
+                      s/FIRST :values :ipv4_address])))]
+    (merge-with merge opts {::workflow/params {:ip ip}})))
+
+(def resource-create
+  (workflow/->workflow*
+   {:first-step ::start-create-or-delete
+    :last-step  ::end-create-or-delete
+    :pipeline   [::tool/tofu          ["render tofu:init tofu:apply:-auto-approve"]
+                 ::tool/ansible       ["render ansible-playbook:main.yml" opts-fn]
+                 ::tool/ansible-local ["render ansible-playbook:main.yml" opts-fn]]}))
+
+(def resource-delete
+  (workflow/->workflow*
+   {:first-step ::start-create-or-delete
+    :last-step  ::end-create-or-delete
+    :pipeline   [::tool/tofu ["render tofu:destroy:-auto-approve"]]}))
+
+(defn resource
+  [step-fns opts]
+  (let [opts (merge {::workflow/create-fn resource-create
+                     ::workflow/delete-fn resource-delete}
+                    opts)
+        wf (core/->workflow
+            {:first-step ::start
+             :wire-fn (fn [step step-fns]
+                        (case step
+                          ::start [(partial workflow/run-steps step-fns) ::end]
+                          ::end   [identity]))})]
+    (wf step-fns opts)))</code></pre>
+<div class="callout">
+  <strong>Note</strong>
+  <code>-&gt;workflow*</code> calls <code>workflow/new-prefix</code> on the globals derived
+  from <code>opts</code>, stamping a unique hash into both <code>::prefix</code> and
+  <code>::object-prefix</code>. Each invocation writes to an isolated directory and
+  object path, avoiding collisions when the same composite workflow runs concurrently.
+</div>
+</section>
+
+<section id="builtin-steps">
+<h2>Built-in steps <a href="#builtin-steps" class="anchor">#</a></h2>
+
+<h3>Tool-workflow steps</h3>
+<table>
+  <thead><tr><th>Step</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>render</code></td><td>Generate the configuration files via Selmer templates.</td></tr>
+    <tr><td><code>git-check</code></td><td>Verifies working directory is clean and synced with origin.</td></tr>
+    <tr><td><code>git-push</code></td><td>Pushes local commits to the remote repository.</td></tr>
+    <tr><td><code>lock</code></td><td>Acquires an execution lock via Git tags.</td></tr>
+    <tr><td><code>unlock-any</code></td><td>Force-releases the lock, regardless of owner.</td></tr>
+    <tr><td><code>exec</code></td><td>Executes the commands collected by the DSL parser.</td></tr>
+  </tbody>
+</table>
+
+<h3>Composite-workflow steps</h3>
+<table>
+  <thead><tr><th>Step</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>create</code></td><td>Invokes one or more tool workflows via <code>::create-fn</code>.</td></tr>
+    <tr><td><code>delete</code></td><td>Invokes one or more tool workflows via <code>::delete-fn</code>.</td></tr>
+    <tr><td><code>git-check</code> / <code>git-push</code> / <code>lock</code> / <code>unlock-any</code></td>
+        <td>Same semantics as tool-workflow steps.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>run-steps</code> dispatch</h3>
+<p>The dynamic workflow built by <code>workflow/run-steps</code> iterates the user-provided <code>::workflow/steps</code> vector and dispatches each step to its implementation. Steps without a namespace are auto-qualified to <code>big-config.workflow</code>.</p>
+<pre><code class="language-clojure">(workflow/run-steps
+  step-fns
+  {::workflow/steps      [:render :lock :exec :unlock-any]
+   ::run/cmds            ["tofu init" "tofu apply -auto-approve"]
+   ::workflow/create-fn  my-create-fn
+   ::workflow/delete-fn  my-delete-fn})</code></pre>
+</section>
+
+<section id="render">
+<h2>Render (template engine) <a href="#render" class="anchor">#</a></h2>
+<p>
+  <code>big-config.render</code> is a Selmer-based template engine inspired by
+  <code>seancorfield/deps-new</code>. A minimal template consists of a resource path,
+  a target directory, and one or more <em>transforms</em>:
+</p>
+<pre><code class="language-clojure">{:big-config.render/templates
+ [{:template   "resource-path"
+   :target-dir "target"
+   :transform  [["."]]}]}</code></pre>
+<p>
+  By default, <code>render</code> copies the source folder to <code>:target-dir</code> and
+  replaces any <code>{{key-a}}</code> in filenames and contents with the
+  corresponding <code>:key-a</code> from the <code>data</code> map.
+</p>
+
+<h3>Map glossary</h3>
+<table>
+  <thead><tr><th>Name</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>opts</code></td><td>The BigConfig map threaded through the workflow.</td></tr>
+    <tr><td><code>data</code></td><td>Context passed to Selmer (unless <code>:raw</code>).</td></tr>
+    <tr><td><code>edn</code></td><td>The high-level rendering config (one entry of <code>::templates</code>).</td></tr>
+    <tr><td><code>transform</code></td><td>A tuple <code>[src target files delimiters opts]</code> describing one transform.</td></tr>
+    <tr><td><code>files</code></td><td>Mapping from template filenames to rendered target names.</td></tr>
+    <tr><td><code>delimiters</code></td><td>Override Selmer delimiters (avoids conflicts with target syntax).</td></tr>
+    <tr><td><code>transform-opts</code></td><td><code>:only</code> and <code>:raw</code> modifiers.</td></tr>
+  </tbody>
+</table>
+
+<h3><code>edn</code> keys</h3>
+<table>
+  <thead><tr><th>Key</th><th>Required</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>:template</code></td><td><span class="badge required">required</span></td><td>Resource path with template files.</td></tr>
+    <tr><td><code>:target-dir</code></td><td><span class="badge required">required</span></td><td>Where the rendered files are written (e.g. <code>.dist</code>).</td></tr>
+    <tr><td><code>:transform</code></td><td><span class="badge required">required</span></td><td>Sequence of transforms.</td></tr>
+    <tr><td><code>:overwrite</code></td><td><span class="badge optional">optional</span></td><td><code>true</code> or <code>:delete</code> — same as <code>deps-new</code>.</td></tr>
+    <tr><td><code>:data-fn</code></td><td><span class="badge optional">optional</span></td><td><code>(fn [data opts] data)</code> — modify the data map.</td></tr>
+    <tr><td><code>:template-fn</code></td><td><span class="badge optional">optional</span></td><td><code>(fn [data edn] edn)</code> — modify the edn map.</td></tr>
+    <tr><td><code>:post-process-fn</code></td><td><span class="badge optional">optional</span></td><td>Function(s) run after copying, with <code>(edn data)</code>.</td></tr>
+  </tbody>
+</table>
+
+<h3>Transform shapes</h3>
+<p>The <code>:transform</code> tuple follows <code>[src target files delimiters opts]</code>.</p>
+<pre><code class="language-clojure">;; src can be a folder or symbol/function
+{:transform
+ [['ansible/render-files
+   {:inventory "inventory.json"
+    :config    "default.config.yml"}
+   :raw]]}
+
+;; target, files, custom delimiters
+{:transform
+ [["src" "target"
+   {"config.json" "config.json"}
+   {:tag-open    \<
+    :tag-close   \>
+    :filter-open \<
+    :filter-close \>}]]}
+
+;; :only — copy just the listed files
+{:transform
+ [["src" "src/{{data-key-a}}"
+   {"main.clj" "{{data-key-b|selmer-filter:param-a:param-b}}.clj"}]
+  ["test" "test/{{data-key-b}}"
+   {"main_test.clj" "{{data-key-c}}_test.clj"}
+   :only]]}
+
+;; :raw — disable Selmer rendering for a directory
+{:transform
+ [["resources" "resources/{{data-key-a}}"]
+  ["templates" "resources/{{data-key-b}}/templates" :raw]]}</code></pre>
+
+<h3>Built-in <code>render</code> step</h3>
+<p>The workflow version is exposed as <code>render/templates</code>, ready to drop into a workflow:</p>
+<pre><code class="language-clojure">(def templates
+  (core/->workflow {:first-step ::start
+                    :wire-fn (fn [step _]
+                               (case step
+                                 ::start [render ::end]
+                                 ::end   [identity]))}))</code></pre>
+<p><code>workflow/prepare</code> additionally injects <code>:target-dir</code> and
+<code>:target-object</code> into every template map, so templates can reference them
+without repeating path logic.</p>
+
+<h3>Whitespace control workaround</h3>
+<p>
+  Selmer does not natively support whitespace-trimming delimiters, so BigConfig
+  implements <code>{{-</code> / <code>-}}</code> via a pre-processing pass (see
+  <code>selmer-filters/whitespace-control</code>). Use it like this:
+</p>
+<pre><code class="language-bash">{{- some-var -}}    # trims surrounding whitespace</code></pre>
+
+<h3>Binary files</h3>
+<p>
+  The dynamic var <code>render/*non-replaced-exts*</code> lists extensions that bypass
+  Selmer: <code>jpg jpeg png gif bmp bin</code>. Rebind to extend.
+</p>
+</section>
+
+<section id="lock">
+<h2>Lock / Unlock <a href="#lock" class="anchor">#</a></h2>
+<p>
+  BigConfig Lock provides Atlantis-like locking — but entirely <em>client-side</em>,
+  using Git tags as the backing store. This restores interactive operation by
+  removing mandatory pull-request workflows, and works equally well with Terraform,
+  Ansible, and any other tool.
+</p>
+
+<h3>Required <code>opts</code> keys</h3>
+<table>
+  <thead><tr><th>Key</th><th>Required</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>:big-config.lock/owner</code></td>
+        <td><span class="badge required">required</span></td>
+        <td>String distinguishing the user / CI environment.</td></tr>
+    <tr><td><code>:big-config.lock/lock-keys</code></td>
+        <td><span class="badge required">required</span></td>
+        <td>Sequence of keys whose values uniquely identify the resource to lock.</td></tr>
+  </tbody>
+</table>
+
+<h3>Behavior</h3>
+<ul>
+  <li>The lock id is the hex hash of the selected <code>lock-keys</code> values.</li>
+  <li>Re-acquiring a lock with the same <code>owner</code> succeeds (idempotent).</li>
+  <li>Acquiring a lock held by a different owner fails with exit 1 and a message <code>"Different owner"</code>.</li>
+</ul>
+
+<h3>Steps</h3>
+<pre><code class="language-clojure">;; big-config.lock/lock pipeline
+::generate-lock-id → ::delete-tag → ::create-tag → ::push-tag
+       → on push success: done
+       → on push failure: ::get-remote-tag → ::read-tag → ::check-tag
+
+;; big-config.unlock/unlock-any pipeline
+::generate-lock-id → ::delete-tag → ::delete-remote-tag → ::check-remote-tag</code></pre>
+
+<h3>Usage</h3>
+<pre><code class="language-clojure">(require '[big-config.lock :as lock])
+
+(lock/lock {::lock/owner     "alberto"
+            ::lock/lock-keys [::env ::region]
+            ::env            "prod"
+            ::region         "eu-west-1"})
+
+;; force release
+(require '[big-config.unlock :as unlock])
+(unlock/unlock-any {::lock/owner     "alberto"
+                    ::lock/lock-keys [::env ::region]
+                    ::env            "prod"
+                    ::region         "eu-west-1"})</code></pre>
+</section>
+
+<section id="run">
+<h2>Run (shell execution) <a href="#run" class="anchor">#</a></h2>
+<p><code>big-config.run</code> wraps <code>babashka.process/shell</code>:</p>
+<ul>
+  <li><code>generic-cmd</code> — runs a single command, captures stdout/stderr, merges results into <code>opts</code>.</li>
+  <li><code>run-cmd</code> — runs one command from <code>::cmds</code> using <code>::shell-opts</code>; output handling depends on <code>::bc/env</code>.</li>
+  <li><code>run-cmds</code> — workflow that runs all of <code>::cmds</code> sequentially, short-circuiting on failure.</li>
+  <li><code>handle-cmd</code> — strips ANSI escape sequences, accumulates a <code>:big-config/procs</code> trace.</li>
+  <li><code>mktemp-create-dir</code> / <code>mktemp-remove-dir</code> — create and clean throw-away dirs.</li>
+</ul>
+<p>Environment behavior:</p>
+<table>
+  <thead><tr><th><code>:big-config/env</code></th><th>Default <code>:out</code> / <code>:err</code></th></tr></thead>
+  <tbody>
+    <tr><td><code>:lib</code></td><td>captured as strings</td></tr>
+    <tr><td><code>:repl</code> / <code>:shell</code></td><td>inherited from the parent process</td></tr>
+  </tbody>
+</table>
+<pre><code class="language-clojure">(require '[big-config.run :as run])
+
+(run/run-cmds
+  [(fn [f step opts] (println step) (f step opts))]
+  {::bc/env :repl
+   ::run/shell-opts {:continue true
+                     :dir "big-infra"
+                     :extra-env {"FOO" "BAR"}}
+   ::run/cmds ["bash -c 'echo Error >&2 && exit 1'"]})</code></pre>
+</section>
+
+<section id="git">
+<h2>Git helpers <a href="#git" class="anchor">#</a></h2>
+<p><code>big-config.git/check</code> is a workflow that asserts the local HEAD matches the upstream:</p>
+<pre><code class="language-clojure">::git-diff → ::fetch-origin → ::upstream-name → ::pre-revision
+          → ::current-revision → ::origin-revision → ::compare-revisions</code></pre>
+<p>If the working directory is dirty, the upstream is missing, or the local revisions diverge from origin, the workflow exits with code 1 and <code>"The local revisions don't match the remote revision"</code>.</p>
+<p><code>big-config.git/git-push</code> is a thin wrapper around <code>git push</code>, surfaced as the <code>git-push</code> step.</p>
+</section>
+
+<section id="store">
+<h2>Store (Redis event-sourcing) <a href="#store" class="anchor">#</a></h2>
+<p>
+  <code>big-config.store</code> is a Redis-backed event-sourcing store — a fork of
+  <a href="https://github.com/klauswuestefeld/prevayler-clj"><code>prevayler-clj</code></a>
+  ideas. It journals each event in a Redis sorted set, replays them on restart, and
+  provides ACID-like guarantees:
+</p>
+<ul>
+  <li><strong>A</strong>tomicity — successful <code>WATCH/MULTI/EXEC</code> writes the event and bumps state atomically; failures retry.</li>
+  <li><strong>C</strong>onsistency — guaranteed by the business function; throw to abort.</li>
+  <li><strong>I</strong>solation — <code>locking this</code> serializes <code>handle!</code> calls.</li>
+  <li><strong>D</strong>urability — events live in Redis with a per-event hash for replay verification.</li>
+</ul>
+
+<h3>API</h3>
+<table>
+  <thead><tr><th>Function</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>store!</code></td><td>Constructor; returns a <code>Store</code>.</td></tr>
+    <tr><td><code>handle!</code></td><td>Journals an event, applies the business fn, returns the new state.</td></tr>
+    <tr><td><code>snapshot!</code></td><td>Persists a snapshot (negative offset) and trims older events.</td></tr>
+    <tr><td><code>restore</code></td><td>Replays missing events into the in-memory state.</td></tr>
+    <tr><td><code>get-offset</code></td><td>Current event offset.</td></tr>
+    <tr><td>deref (<code>@store</code>)</td><td>Returns the current user state.</td></tr>
+  </tbody>
+</table>
+<pre><code class="language-clojure">(require '[big-config.store :as store])
+
+(def s
+  (store/store!
+    {:initial-state {:cnt 0}
+     :business-fn   (fn [state {:keys [op]} _ts]
+                      (case op :inc (update state :cnt inc)))
+     :store-key     "store-state"
+     :snapshot-every 10
+     :wcar-opts     {:pool (car/connection-pool {})
+                     :spec {:uri "redis://localhost:6379/"}}}))
+
+(store/handle! s {:op :inc}) ; => {:cnt 1}
+(store/snapshot! s)
+(.close ^java.io.Closeable s)</code></pre>
+<p>The default constructor takes care of replay on startup. Snapshots are stored at <code>-offset</code> so a <code>ZRANGEBYSCORE -inf 0</code> finds them ahead of regular events.</p>
+</section>
+
+<section id="system">
+<h2>System (lifecycle) <a href="#system" class="anchor">#</a></h2>
+<p>
+  <code>big-config.system</code> is a workflow-based alternative to Integrant. Components
+  are <em>steps</em>, and each step that starts a resource calls <code>add-stop-fn</code>
+  to register cleanup. The terminal <code>stop</code> step iterates the accumulated
+  <code>::stop-fns</code>.
+</p>
+
+<h3>Helpers</h3>
+<table>
+  <thead><tr><th>Function</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>env</code></td><td>Environment-variable map, keys keywordized (<code>_</code> and <code>.</code> → <code>-</code>, lowercased).</td></tr>
+    <tr><td><code>destroy!</code></td><td>Gracefully destroy a <code>babashka.process/process</code> with a timeout, then force-kill.</td></tr>
+    <tr><td><code>re-process</code></td><td>Spawn a child process and block until <code>:regex</code> matches its <code>:out</code>/<code>:err</code>, or <code>:timeout</code>.</td></tr>
+    <tr><td><code>add-stop-fn</code></td><td>Register a cleanup function for later <code>stop</code>.</td></tr>
+    <tr><td><code>stop</code></td><td>Workflow step: invokes registered stop functions in order. Honors <code>::async</code> to defer.</td></tr>
+    <tr><td><code>stop!</code></td><td>Invokes the deferred stop function on an async system.</td></tr>
+  </tbody>
+</table>
+
+<h3>Example</h3>
+<pre><code class="language-clojure">(defn background-process [opts]
+  (let [re-opts {:cmd     "clj -X my.app/main :shutdown-timeout 100"
+                 :regex   #"token"
+                 :timeout 3000
+                 :key     ::proc}
+        opts    (re-process re-opts opts)]
+    (add-stop-fn opts
+      (fn [{:keys [::proc] :as opts}]
+        (when proc (destroy! proc 1000))))))
+
+(def ->system
+  (core/->workflow
+    {:first-step ::start
+     :wire-fn (fn [step _]
+                (case step
+                  ::start [background-process ::end]
+                  ::end   [stop]))}))
+
+;; synchronous (default): blocks until stop
+(->system [log-step-fn] {::bc/env :repl})
+
+;; asynchronous — stop later
+(def system (->system [log-step-fn] {::bc/env :repl ::async true}))
+(stop! system)</code></pre>
+</section>
+
+<section id="bigtofu">
+<h2>BigTofu (OpenTofu/Terraform constructs) <a href="#bigtofu" class="anchor">#</a></h2>
+<p>
+  <code>big-tofu.core</code> defines a <code>To</code> protocol and a <code>Construct</code>
+  record for assembling HCL via Clojure data. A <code>Construct</code> can be referenced
+  by property (Terraform-style interpolation) or converted into an ARN string.
+</p>
+<pre><code class="language-clojure">(require '[big-tofu.core :as t]
+         '[big-tofu.create :as tc])
+
+(def kms-blocks  (tc/kms :alpha/big-kms))
+(def sqs-blocks  (tc/sqs :alpha/big-sqs))
+(def buckets     (tc/bucket :alpha/big-bucket "foo" "bar"))
+
+(->> kms-blocks
+     (map t/construct)
+     (apply utils/deep-merge)
+     utils/sort-nested-map
+     pp/pprint)</code></pre>
+<p>The stdlib (<code>big-tofu.create</code>) provides convenience builders:</p>
+<ul>
+  <li><code>bucket</code> — variadic, accepts a base FQN and optional suffix tokens.</li>
+  <li><code>sqs</code> — single SQS queue.</li>
+  <li><code>kms</code> — KMS key with an IAM policy permitting the AWS account root.</li>
+  <li><code>provider</code> — AWS + S3 backend stanza, optional <code>assume_role</code>.</li>
+</ul>
+<p>The <code>To</code> protocol surfaces:</p>
+<table>
+  <thead><tr><th>Method</th><th>Returns</th></tr></thead>
+  <tbody>
+    <tr><td><code>(reference c property)</code></td><td>String like <code>${resource.aws_kms_key.alpha_big_kms.id}</code>.</td></tr>
+    <tr><td><code>(construct c)</code></td><td>Nested map <code>{group {type {name block}}}</code> ready for HCL/JSON.</td></tr>
+    <tr><td><code>(arn c aws-account-id [region])</code></td><td>ARN string for supported resource types (IAM role, OIDC provider, Secrets Manager).</td></tr>
+    <tr><td><code>(root-arn c)</code></td><td>For <code>data.aws_caller_identity.current</code> only, produces <code>arn:aws:iam::&lt;acct&gt;:root</code>.</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="templates">
+<h2>Templates <a href="#templates" class="anchor">#</a></h2>
+<p>
+  BigConfig ships a template scaffolding CLI (<code>big-config.tools</code>) that
+  exposes generators as Clojure tools (<code>clojure -Tbig-config &lt;name&gt;</code>).
+</p>
+
+<h3>Active templates</h3>
+<table>
+  <thead><tr><th>Template</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>package</code></td><td>Full BigConfig project scaffold (Tofu + Ansible + tooling).</td></tr>
+    <tr><td><code>devenv</code></td><td>Nix <code>devenv</code> files for Clojure/Babashka development.</td></tr>
+    <tr><td><code>action</code></td><td>GitHub Actions CI workflow for Clojure projects.</td></tr>
+  </tbody>
+</table>
+
+<h3>Deprecated templates <span class="badge deprecated">deprecated</span></h3>
+<table>
+  <tbody>
+    <tr><td><code>terraform</code></td><td>Tofu/Terraform-only project scaffold. Use <code>package</code>.</td></tr>
+    <tr><td><code>ansible</code></td><td>Ansible-only project scaffold. Use <code>package</code>.</td></tr>
+    <tr><td><code>multi</code></td><td>Hybrid Ansible + Terraform scaffold. Use <code>package</code>.</td></tr>
+    <tr><td><code>dotfiles</code></td><td>Dotfiles management. Use <a href="https://github.com/amiorin/dotfiles-v3">dotfiles-v3</a>.</td></tr>
+    <tr><td><code>tools</code></td><td>Tools.clj generator. See current <code>big_config/tools.clj</code>.</td></tr>
+    <tr><td><code>generic</code></td><td>Generic project scaffold. Use <code>package</code>.</td></tr>
+  </tbody>
+</table>
+
+<h3>Example: <code>package</code></h3>
+<pre><code class="language-bash">clojure -Tbig-config package \
+  :owner amiorin :repository joe :ssh-key 812184 \
+  :target-dir ../../joe</code></pre>
+<p>
+  Templates use Selmer syntax. File names and contents are interpolated via the
+  <code>render</code> step. Custom delimiters are used where the default
+  <code>{{ }}</code> conflicts with target syntax (e.g. EDN files use <code>&lt; &gt;</code>).
+</p>
+</section>
+
+<section id="bc-pars">
+<h2>BC_PAR_ overrides <a href="#bc-pars" class="anchor">#</a></h2>
+<p>
+  Override any project parameter from CI by prefixing the env var with
+  <code>BC_PAR_</code>. The prefix is stripped, the rest is lower-cased,
+  underscores and dots become dashes, and the result is converted to a keyword
+  inside <code>::workflow/params</code>.
+</p>
+<pre><code class="language-bash">export BC_PAR_CLOUDFLARE_ZONE_ID="your-zone-id"
+# becomes {:cloudflare-zone-id "your-zone-id"} in ::workflow/params</code></pre>
+<p>This is applied by <code>workflow/read-bc-pars</code>, which merges the env-derived params with the existing ones.</p>
+</section>
+
+<section id="utils">
+<h2>Utilities &amp; macros <a href="#utils" class="anchor">#</a></h2>
+<table>
+  <thead><tr><th>Symbol</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>utils/deep-merge</code></td><td>Recursively merges maps (records preserved).</td></tr>
+    <tr><td><code>utils/sort-nested-map</code></td><td>Sorts every map in a tree into <code>sorted-map</code> form — used for stable hashing.</td></tr>
+    <tr><td><code>utils/keyword-&gt;path</code></td><td><code>:big-config.core/foo</code> → <code>"big-config/core/foo"</code>.</td></tr>
+    <tr><td><code>utils/keyword-&gt;name</code></td><td><code>:big-config.core/foo</code> → <code>"big-config-core-foo"</code>.</td></tr>
+    <tr><td><code>utils/port-assigner</code></td><td>Deterministic port for a service, derived from the current working directory.</td></tr>
+    <tr><td><code>utils/assert-args-present</code></td><td>Macro: throws <code>IllegalArgumentException</code> if any named arg is <code>nil</code>.</td></tr>
+    <tr><td><code>utils/MAP-WALKER</code></td><td>Specter recursive path that walks maps and vectors of maps.</td></tr>
+    <tr><td><code>utils/deep-sort-maps</code></td><td>Specter-powered map-tree sorter (used internally by <code>debug</code>).</td></tr>
+  </tbody>
+</table>
+
+<h3>The <code>debug</code> macro</h3>
+<p>
+  <code>debug</code> captures everything sent through <code>tap&gt;</code> during the body
+  and exposes it both as a sorted snapshot bound to a Var and as an extra key on
+  the result (when the result is a map).
+</p>
+<pre><code class="language-clojure">(require '[big-config.utils :refer [debug]])
+
+(debug tap-values
+  (defn fn-wip []
+    (tap> [:fn-wip {::b {::d 4 ::c 3} ::a 1}])
+    {::b {::d 4 ::c 3} ::a 1})
+  (fn-wip))
+;; tap-values is now def'd in the current ns as a sorted vector
+;; of every tap> emitted inside the body.</code></pre>
+<p>Even when the body throws, <code>tap-values</code> is still populated for inspection. LSP indentation for the macro is configured in <code>.lsp/config.edn</code>.</p>
+</section>
+
+<section id="selmer">
+<h2>Selmer extras <a href="#selmer" class="anchor">#</a></h2>
+<p><code>big-config.selmer-filters</code> registers two filters and exposes whitespace-control:</p>
+<ul>
+  <li><code>:lookup-env</code> — reads an environment variable.</li>
+  <li><code>:-&gt;file</code> — replaces <code>.</code> with <code>/</code> and <code>-</code> with <code>_</code>, suitable for converting a namespace into a file path.</li>
+  <li><code>whitespace-control</code> — pre-processor that implements <code>{{-</code> / <code>-}}</code> and <code>{%-</code> / <code>-%}</code> (and the matching closers) by trimming surrounding whitespace before Selmer runs.</li>
+</ul>
+<pre><code class="language-clojure">;; Inside a template
+;; {{ "PATH"|lookup-env }}            → reads $PATH
+;; {{ "big-config.core"|->file }}     → "big_config/core"</code></pre>
+</section>
+
+<section id="deps">
+<h2>Dependencies <a href="#deps" class="anchor">#</a></h2>
+<table>
+  <thead><tr><th>Library</th><th>Version</th><th>Role</th></tr></thead>
+  <tbody>
+    <tr><td><code>org.clojure/clojure</code></td><td>1.12.4</td><td>Language runtime</td></tr>
+    <tr><td><code>io.github.clojure/tools.build</code></td><td>0.10.12</td><td>Build tooling</td></tr>
+    <tr><td><code>babashka/process</code></td><td>0.6.25</td><td>Shell execution</td></tr>
+    <tr><td><code>babashka/fs</code></td><td>0.5.31</td><td>Filesystem ops</td></tr>
+    <tr><td><code>org.babashka/cli</code></td><td>0.8.67</td><td>CLI parsing</td></tr>
+    <tr><td><code>io.github.paintparty/bling</code></td><td>0.9.2</td><td>Colored terminal output</td></tr>
+    <tr><td><code>selmer/selmer</code></td><td>1.13.1</td><td>Template engine</td></tr>
+    <tr><td><code>cheshire/cheshire</code></td><td>6.1.0</td><td>JSON</td></tr>
+    <tr><td><code>com.rpl/specter</code></td><td>1.1.6</td><td>Data navigation/transformation</td></tr>
+    <tr><td><code>com.taoensso/carmine</code></td><td>3.5.0</td><td>Redis client (Store)</td></tr>
+    <tr><td><code>io.github.babashka/neil</code></td><td>git SHA</td><td>Dependency management</td></tr>
+  </tbody>
+</table>
+<p>Dev/test only (under <code>:dev</code> and <code>:test</code> aliases): <code>expound</code>, <code>humane-test-output</code>, <code>quickdoc</code>, <code>tools.namespace</code>, <code>classpath</code>, <code>cognitect-labs/test-runner</code>, <code>babashka/babashka</code>, <code>aero</code>, <code>integrant</code>, <code>integrant/repl</code>.</p>
+</section>
+
+<section id="dev-workflow">
+<h2>Development workflow <a href="#dev-workflow" class="anchor">#</a></h2>
+
+<h3>Setup</h3>
+<pre><code class="language-bash">bb build          # Bootstrap dev environment (runs devenv:build)
+direnv allow      # Load environment via direnv</code></pre>
+<p>The dev environment uses Nix (<code>devenv.nix</code>) and provides:</p>
+<pre><code class="language-bash">pkgs.git
+pkgs.babashka
+pkgs.process-compose
+pkgs.just
+pkgs.redis
+pkgs.direnv
+pkgs.clj-kondo
+languages.clojure.enable = true;</code></pre>
+
+<h3>Running tests</h3>
+<pre><code class="language-bash">just test                                          # Preferred (runs `clojure -M:test`)
+clojure -M:test                                    # Direct
+clj   -X:test :dirs '["test/clj"]'                 # Explicit test dir
+bb    test-bb-task                                 # BigConfig system tests</code></pre>
+<p>Tests mirror <code>src/clj/</code> namespaces (<code>test/clj/big_config/&lt;ns&gt;_test.clj</code>).</p>
+
+<h3>REPL</h3>
+<pre><code class="language-bash">clojure -M:dev    # Start REPL with dev tools</code></pre>
+<p>Key REPL helpers live under <code>env/dev/clj/</code>: <code>humane-test-output</code>, <code>tools.namespace</code>, <code>quickdoc</code>. <code>(comment …)</code> blocks throughout the source contain reproducible REPL recipes.</p>
+
+<h3><code>justfile</code> recipes</h3>
+<table>
+  <thead><tr><th>Recipe</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>just help</code></td><td>List all recipes.</td></tr>
+    <tr><td><code>just test</code></td><td>Run all tests.</td></tr>
+    <tr><td><code>just tidy</code></td><td>clojure-lsp <code>clean-ns</code> + <code>format</code>.</td></tr>
+    <tr><td><code>just upgrade</code></td><td>Upgrade deps via <code>neil dep upgrade</code> in main repo and active templates.</td></tr>
+    <tr><td><code>just redis-dev</code> / <code>just redis-test</code></td><td>Connect to dev/test Redis (ports 20394 / 16812).</td></tr>
+    <tr><td><code>just pc-dev</code> / <code>just pc-test</code></td><td>Manage <code>process-compose</code> stacks (ports 22557 / 60538).</td></tr>
+  </tbody>
+</table>
+
+<h3>Babashka tasks (<code>bb.edn</code>)</h3>
+<pre><code class="language-clojure">{:deps {amiorin/big-config {:local/root "."}}
+ :tasks
+ {build         {:doc  "setup the dev environment"
+                 :task (shell {:dir ".big-config"} "bb build render devenv:build")}
+  test-bb-task  {:requires ([big-config.system :refer [test-bb]])
+                 :task (test-bb)}
+  just          {:doc  "setup the dev environment and run a recipe"
+                 :task (do (run 'build)
+                           (shell (str/join " " (into ["just"] *command-line-args*))))}}}</code></pre>
+</section>
+
+<section id="build">
+<h2>Build (uberjar) <a href="#build" class="anchor">#</a></h2>
+<pre><code class="language-bash">clojure -T:build all     # Clean, prep, and build uberjar
+clojure -T:build uber    # Uberjar only
+clojure -T:build clean   # Clean target/</code></pre>
+<p><code>build.clj</code> targets <code>motain/big-login</code> with a default version of <code>0.0.1-SNAPSHOT</code> for local builds. The uberjar bundles <code>src/clj</code>, <code>resources</code>, <code>env/prod/resources</code>, and <code>env/prod/clj</code>, with the entry point <code>motain.big-login.core</code>.</p>
+</section>
+
+<section id="ci">
+<h2>CI/CD <a href="#ci" class="anchor">#</a></h2>
+<p>
+  <code>.github/workflows/ci.yml</code> triggers on push to <code>main</code> (ignoring
+  <code>**/*.md</code> and <code>/.gitignore</code> changes):
+</p>
+<ol>
+  <li><strong>test</strong>: pulls <code>ghcr.io/amiorin/big-container:latest</code>, mounts the workspace, and runs <code>bb build && direnv allow && direnv exec . just test</code> inside the container using the <code>fish</code> shell.</li>
+  <li><strong>tag</strong>: on test success, computes <code>0.3.$(git rev-list --count HEAD)</code> and force-pushes a Git tag.</li>
+</ol>
+<h3>Local CI execution</h3>
+<pre><code class="language-bash">cat .github/workflows/ci.yml \
+  | jet -i yaml -o json \
+  | jq -r .jobs.test.steps[3].run \
+  | GITHUB_WORKSPACE=$(pwd) bash -s</code></pre>
+</section>
+
+<section id="conventions">
+<h2>Conventions <a href="#conventions" class="anchor">#</a></h2>
+
+<h3>Naming</h3>
+<table>
+  <thead><tr><th>Pattern</th><th>Meaning</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td><code>-&gt;</code> prefix</td><td>Constructor</td><td><code>-&gt;workflow</code>, <code>-&gt;step-fn</code></td></tr>
+    <tr><td><code>!</code> suffix</td><td>Side-effecting / destructive</td><td><code>write!</code>, <code>restore!</code>, <code>destroy!</code></td></tr>
+    <tr><td><code>?</code> suffix</td><td>Predicate</td><td><code>(ifn? f)</code></td></tr>
+    <tr><td><code>::</code> qualified keywords</td><td>Namespaced options</td><td><code>::bc/exit</code>, <code>::lock/owner</code></td></tr>
+    <tr><td><code>^:private</code></td><td>Private var</td><td><code>(def ^:private prefix "BC_PAR_")</code></td></tr>
+    <tr><td><code>[name]</code> vs <code>[name]*</code></td><td>Library fn vs Babashka task</td><td><code>tofu</code> takes <code>step-fns + opts</code>; <code>tofu*</code> takes <code>args</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Error handling</h3>
+<ul>
+  <li>Throw <code>ex-info</code> with structured <code>ex-data</code>.</li>
+  <li>The workflow engine catches exceptions and merges <code>ex-data</code> + <code>:big-config/err</code> + <code>:big-config/stack-trace</code> into <code>opts</code>.</li>
+  <li>Validate at system boundaries; trust internal function contracts.</li>
+</ul>
+
+<h3>Specter</h3>
+<p><code>com.rpl/specter</code> drives complex nested-data transforms (e.g., <code>MAP-WALKER</code>, <code>deep-sort-maps</code> in <code>big-config.utils</code>). Specter macros are mapped under <code>.clj-kondo/config.edn</code> for correct linting.</p>
+</section>
+
+<section id="avoid">
+<h2>What to avoid <a href="#avoid" class="anchor">#</a></h2>
+<div class="callout danger">
+  <strong>Removed namespaces — do not use</strong>
+  <code>aero/aero</code>, <code>big-config.aero</code>, <code>big-config.call</code>,
+  <code>big-config.clone</code>, <code>big-config.package</code> were removed.
+</div>
+<ul>
+  <li>Don't pass <code>step-fns</code> inside the <code>-&gt;workflow</code> map — pass it as the first argument when invoking the workflow.</li>
+  <li>Don't use <code>build</code> as a synonym for <code>render</code> — <code>render</code> is the current name (the old <code>deps-new</code> integration was renamed).</li>
+  <li>Don't modify <code>.github/workflows/ci.yml</code> to skip tests — the tag job depends on test success.</li>
+  <li>Don't push to <code>main</code> directly; everything goes through feature branches and CI.</li>
+</ul>
+</section>
+
+<section id="changelog">
+<h2>Changelog highlights <a href="#changelog" class="anchor">#</a></h2>
+<details open>
+<summary><strong>Unreleased</strong></summary>
+<ul>
+  <li>Bump <code>selmer</code> to support template inheritance.</li>
+  <li>Add BigConfig Store (Redis-backed event-sourcing, fork of <code>prevayler-clj</code>).</li>
+  <li>Add BigConfig System as an alternative to Integrant.</li>
+  <li>Add BigConfig Workflow for composing automation units into pipelines.</li>
+  <li>Add the <code>debug</code> macro.</li>
+  <li>Refactor <code>workflow</code> to use keywords for steps in <code>parse-args</code> and <code>-&gt;workflow</code>.</li>
+  <li>Rename <code>show-help</code> → <code>help</code>; mark internal tasks private.</li>
+  <li>Remove <code>step-fns</code> from <code>-&gt;workflow</code> map.</li>
+  <li>Remove legacy namespaces (<code>aero</code>, <code>call</code>, <code>clone</code>, <code>package</code>) and drop the <code>aero/aero</code> dep.</li>
+</ul>
+</details>
+<details>
+<summary><strong>0.3.264 — 2025-10-09</strong></summary>
+<ul>
+  <li>Whitespace-control workaround for Selmer (<code>{{-</code> / <code>-}}</code>).</li>
+  <li><code>dotfiles</code> template: dynamic <code>.envrc.private</code> creation, <code>/dist</code> in <code>.gitignore</code>, <code>default</code> profile fallback.</li>
+</ul>
+</details>
+<details>
+<summary><strong>0.3.256 — 2025-10-06</strong></summary>
+<ul>
+  <li>New site <a href="https://www.big-config.it">big-config.it</a>.</li>
+  <li><code>render</code> replaces <code>build</code>; Selmer becomes the templating language; <code>src</code> can be a symbol or a function generating files.</li>
+  <li>Clojure Tools generators: <code>action</code>, <code>ansible</code>, <code>devenv</code>, <code>dotfiles</code>, <code>generic</code>, <code>multi</code>, <code>terraform</code>, <code>tools</code>.</li>
+</ul>
+</details>
+<details>
+<summary><strong>0.2.187 — 2025-07-30</strong></summary>
+<ul>
+  <li><code>deps-new</code> becomes a pillar of the developer experience.</li>
+  <li><code>step</code> workflow + DSL parsing in the CLI; <code>build-fn</code> hook.</li>
+  <li><code>module</code> and <code>profile</code> conventions for multi-output / multi-environment.</li>
+  <li><code>port-assigner</code>, <code>secrets-manager</code> (AWS).</li>
+</ul>
+</details>
+<details>
+<summary><strong>0.1.169 — 2025-04-18</strong></summary>
+<ul>
+  <li>First <code>deps-new</code> template; <code>Construct</code> defrecord and <code>To</code> protocol.</li>
+  <li><code>big-tofu.create</code> stdlib; reusable Tofu tests (stability, catch-nils).</li>
+  <li><code>prod</code> guardrail blocking destructive actions.</li>
+</ul>
+</details>
+</section>
+
+<section id="glossary">
+<h2>Glossary <a href="#glossary" class="anchor">#</a></h2>
+<dl>
+  <dt><strong>opts map</strong></dt>
+  <dd>The BigConfig map threaded through every workflow step.</dd>
+  <dt><strong>step</strong></dt>
+  <dd>A qualified keyword naming a node in a workflow's state graph.</dd>
+  <dt><strong>step function</strong></dt>
+  <dd>Middleware wrapping a step. Built via <code>-&gt;step-fn</code> or written by hand <code>[f step opts]</code>.</dd>
+  <dt><strong>tool workflow</strong></dt>
+  <dd>The fundamental unit: render + execute one CLI tool.</dd>
+  <dt><strong>comp workflow</strong></dt>
+  <dd>Sequences tool workflows for <code>create</code> / <code>delete</code> lifecycles.</dd>
+  <dt><strong>system workflow</strong></dt>
+  <dd>Lifecycle orchestrator for background components (see <code>big-config.system</code>).</dd>
+  <dt><strong>profile</strong></dt>
+  <dd>Convention for environment identifiers (<code>dev</code>, <code>prod</code>, …). Available to templates as <code>:profile</code>.</dd>
+  <dt><strong>module</strong></dt>
+  <dd>Convention for monorepo sub-projects (borrowed from Integrant). Available to templates as <code>:module</code>.</dd>
+  <dt><strong>prefix / object-prefix</strong></dt>
+  <dd>Base directory and object naming. Defaults: <code>.dist</code> and <code>tofu</code>. Stamped with a unique hash by <code>workflow/new-prefix</code> so concurrent invocations don't collide.</dd>
+  <dt><strong>lock-id</strong></dt>
+  <dd>Hex hash of the values selected by <code>:big-config.lock/lock-keys</code> — uniquely identifies a locked resource.</dd>
+</dl>
+</section>
+
+<hr />
+<p style="color: var(--text-muted); font-size: 13px;">
+  Generated from the project source on 2026-05-11. License: see <code>LICENSE</code>.
+  Maintainer: <a href="https://albertomiorin.com">Alberto Miorin</a>.
+</p>
+
+</main>
+</div>
+
+<script>
+  hljs.highlightAll();
+
+  // Active section in sidebar
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const id = entry.target.id;
+      const link = document.querySelector(`#toc a[href="#${id}"]`);
+      if (!link) return;
+      if (entry.isIntersecting) {
+        document.querySelectorAll('#toc a.active').forEach(a => a.classList.remove('active'));
+        link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('main section[id]').forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

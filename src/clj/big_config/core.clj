@@ -115,8 +115,7 @@
                                       (choice {:on-success next-step
                                                :on-failure ::end
                                                :opts opts})))}))
-  ```
-  A workflow can be invoked with a `seq` of `opts` maps."
+  ```"
   {:arglists '([wf-opts])}
   [{:keys [first-step
            last-step
