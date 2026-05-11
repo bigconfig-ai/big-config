@@ -71,10 +71,10 @@
   (require '[big-config.core :as core])
 
   (defmethod pluggable/handle-step ::my-custom-step
-    [_f step step-fns opts]
+    [f step step-fns opts]
     ;; Your custom logic here
-    (println \"Executing custom step!\")
-    (core/ok opts))
+    (println \"Executing custom step!\" step (count step-fns))
+    (f opts))
 
   ;; Usage in a workflow
   (run-steps step-fns {::workflow/steps [:my-custom-step]})

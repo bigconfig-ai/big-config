@@ -32,7 +32,7 @@
                                    ::start [prepare ::render]
                                    ::render [render/render ::end]
                                    ::end [identity]))})]
-  (wf {}))
+  (wf [] {}))
 ```
 
   ### List of maps
@@ -53,14 +53,14 @@
 
   ### Options for `opts`
   * `:big-config.render/templates` (required): A `seq` of `edn` maps.
-  * `:big-config.step/module` (optional): Borrowed from `weavejester/integrant`.
+  * `:big-config.render/module` (optional): Borrowed from `weavejester/integrant`.
   Used in monorepos to identify subprojects; available in `data`.
-  * `:big-config.step/profile` (optional): Similar to `module`, but to identify
+  * `:big-config.render/profile` (optional): Similar to `module`, but to identify
   environments (e.g., `prod`, `dev`).
 
   ### Options for `data`
-  * `:module`: Populated automatically from `:big-config.step/module`.
-  * `:profile`: Populated automatically from `:big-config.step/profile`.
+  * `:module`: Populated automatically from `:big-config.render/module`.
+  * `:profile`: Populated automatically from `:big-config.render/profile`.
 
   Note: All the other keys must be created via `data-fn` or defined in the
   `edn` map.
@@ -343,8 +343,7 @@
 (def
   ^{:doc "This is the workflow version of the template engine. See the
   `big-config.render` namespace for more information."
-    :arglists '([] [opts] [step-fns opts]
-                   [[opts]] [step-fns [opts]])}
+    :arglists '([] [step-fns opts])}
   templates
   (core/->workflow {:first-step ::start
                     :wire-fn (fn [step _]

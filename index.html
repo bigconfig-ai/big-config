@@ -395,7 +395,6 @@ clojure -Tbig-config package \
     <tr><td><code>big-config.store</code></td><td>Redis-backed event-sourcing store.</td></tr>
     <tr><td><code>big-config.system</code></td><td>Lifecycle management (Integrant alternative).</td></tr>
     <tr><td><code>big-config.git</code></td><td>Git helpers (<code>check</code>, <code>git-push</code>).</td></tr>
-    <tr><td><code>big-config.step</code></td><td>Legacy step DSL (<code>tofu:plan</code> → <code>tofu plan</code>).</td></tr>
     <tr><td><code>big-config.step-fns</code></td><td>Step-function middleware (<code>-&gt;exit-step-fn</code>, <code>log-step-fn</code>, <code>bling-step-fn</code>, …).</td></tr>
     <tr><td><code>big-config.utils</code></td><td>Helpers: <code>deep-merge</code>, <code>debug</code> macro, <code>keyword-&gt;path</code>, Specter walkers.</td></tr>
     <tr><td><code>big-config.selmer-filters</code></td><td>Custom Selmer filters and whitespace control.</td></tr>
@@ -453,26 +452,25 @@ clojure -Tbig-config package \
 <section id="cli-dsl">
 <h2>CLI DSL <a href="#cli-dsl" class="anchor">#</a></h2>
 <p>BigConfig provides a concise DSL for running workflows from a shell via Babashka:</p>
-<pre><code class="language-bash">bb render lock tofu:init tofu:apply -- alpha prod
-#  │      │    │                       │     └── profile
-#  │      │    │                       └── module
+<pre><code class="language-bash">bb render lock tofu:init tofu:apply -- tofu apply -auto-approve
+#  │      │    │                       └── raw shell command
 #  step   step colon-syntax (tofu init)</code></pre>
 <ul>
   <li><strong>Steps</strong> (e.g. <code>render</code>, <code>lock</code>) are predefined workflow names.</li>
   <li><strong>Colon syntax:</strong> <code>tool:subcommand</code> is rewritten to <code>tool subcommand</code> for shell execution.</li>
-  <li><strong>Separator <code>--</code></strong>: anything after is forwarded as raw arguments to <code>exec</code>.</li>
+  <li><strong>Separator <code>--</code></strong>: everything after it is forwarded as one raw shell command to <code>exec</code>.</li>
 </ul>
 
 <h3>Examples</h3>
 <pre><code class="language-bash"># exec vs. direct mapping (functionally identical)
-bb exec -- alpha prod ansible-playbook main.yml
-bb ansible-playbook:main.yml -- alpha prod
+bb exec -- ansible-playbook main.yml
+bb ansible-playbook:main.yml
 
-# Global arguments (after `--`) apply to all commands
-bb tofu:apply tofu:destroy -- alpha prod -auto-approve
+# Raw command after `--`
+bb render -- tofu plan -out plan.tfplan
 
 # Inline arguments (per command)
-bb tofu:apply:-auto-approve tofu:destroy:-auto-approve -- alpha prod
+bb tofu:apply:-auto-approve tofu:destroy:-auto-approve
 
 # Tool mapping
 # tofu:init                  -> tofu init
@@ -481,7 +479,7 @@ bb tofu:apply:-auto-approve tofu:destroy:-auto-approve -- alpha prod
 
 <h3>Zero-cost workflow alias</h3>
 <p>You can hide BigConfig behind a shell alias that wraps your standard tools in a safety-first pipeline:</p>
-<pre><code class="language-bash">alias tofu="bb render git-check lock exec git-push unlock-any -- alpha prod tofu"</code></pre>
+<pre><code class="language-bash">alias tofu="bb render git-check lock exec git-push unlock-any -- tofu"</code></pre>
 
 <h3>Argument parsing</h3>
 <p>The DSL is parsed by <code>workflow/parse-args</code>:</p>
@@ -489,9 +487,9 @@ bb tofu:apply:-auto-approve tofu:destroy:-auto-approve -- alpha prod
 ;; => {:big-config.workflow/steps    [:render]
 ;;     :big-config.run/cmds          []}
 
-(workflow/parse-args ["tofu:init" "tofu:apply" "--" "alpha" "prod"])
-;; => {:big-config.workflow/steps    [:exec]
-;;     :big-config.run/cmds          ["tofu init" "tofu apply" "alpha prod"]}</code></pre>
+(workflow/parse-args ["render" "lock" "tofu:init" "tofu:apply" "--" "tofu" "apply" "-auto-approve"])
+;; => {:big-config.workflow/steps    [:render :lock :exec]
+;;     :big-config.run/cmds          ["tofu init" "tofu apply" "tofu apply -auto-approve"]}</code></pre>
 <p>
   The set of recognized step keywords lives in a dynamic var
   <code>workflow/*parse-args-steps*</code>. Default value:
@@ -552,9 +550,9 @@ success and jumps to <code>last-step</code> on failure, using <code>core/choice<
                                 :opts opts})))}))</code></pre>
 
 <h3>Invocation forms</h3>
-<p>A workflow function supports several arities:</p>
+<p>A workflow function supports two invocation forms:</p>
 <pre><code class="language-clojure">(wf)                    ; => [first-step last-step]
-(wf step-fns opts)      ; canonical
+(wf step-fns opts)      ; run the workflow</code></pre>
 </section>
 
 <section id="step-fns">
@@ -601,13 +599,12 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
   function runs.
 </p>
 <pre><code class="language-clojure">(require '[big-config.pluggable :as pluggable]
-         '[big-config.core      :as core]
          '[big-config.workflow  :as workflow])
 
 (defmethod pluggable/handle-step ::my-step
-  [step step-fns opts]
-  (println "Custom step!")
-  (core/ok opts))
+  [f step step-fns opts]
+  (println "Custom step!" step (count step-fns))
+  (f opts))
 
 ;; Register the step keyword so the DSL parser recognizes it
 (binding [workflow/*parse-args-steps*
@@ -664,7 +661,7 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
 <pre><code class="language-clojure">{:deps {group/artifact {:local/root "."}}
  :tasks
  {:requires ([wf :as wf])
-  tofu     {:doc  "bb tofu render tofu:init tofu:apply:-auto-approve"
+  tofu     {:doc  "bb tofu render tofu:init -- tofu apply -auto-approve"
             :task (wf/tofu* *command-line-args*)}
   ansible  {:doc  "bb ansible render -- ansible-playbook main.yml"
             :task (wf/ansible* *command-line-args*)}
@@ -695,15 +692,15 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
   (workflow/->workflow*
    {:first-step ::start-create-or-delete
     :last-step  ::end-create-or-delete
-    :pipeline   [::tool/tofu          ["render tofu:init tofu:apply:-auto-approve"]
-                 ::tool/ansible       ["render ansible-playbook:main.yml" opts-fn]
-                 ::tool/ansible-local ["render ansible-playbook:main.yml" opts-fn]]}))
+    :pipeline   [::tool/tofu          ["render tofu:init -- tofu apply -auto-approve"]
+                 ::tool/ansible       ["render -- ansible-playbook main.yml" opts-fn]
+                 ::tool/ansible-local ["render -- ansible-playbook main.yml" opts-fn]]}))
 
 (def resource-delete
   (workflow/->workflow*
    {:first-step ::start-create-or-delete
     :last-step  ::end-create-or-delete
-    :pipeline   [::tool/tofu ["render tofu:destroy:-auto-approve"]]}))
+    :pipeline   [::tool/tofu ["render -- tofu destroy -auto-approve"]]}))
 
 (defn resource
   [step-fns opts]
@@ -758,7 +755,7 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
 <pre><code class="language-clojure">(workflow/run-steps
   step-fns
   {::workflow/steps      [:render :lock :exec :unlock-any]
-   ::run/cmds            ["tofu init" "tofu apply -auto-approve"]
+   ::run/cmds            ["tofu init" "tofu apply" "tofu apply -auto-approve"]
    ::workflow/create-fn  my-create-fn
    ::workflow/delete-fn  my-delete-fn})</code></pre>
 </section>

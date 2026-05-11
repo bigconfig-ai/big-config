@@ -6,7 +6,8 @@
 
 (defmulti handle-step
   "A multimethod that dispatches on the `step`. It is used by `->workflow*` to
-  allow pluggable step handling.
+  allow pluggable step handling. Methods receive `[f step step-fns opts]`, where
+  `f` is the original step implementation from the workflow's `:wire-fn`.
 
   The `:default` implementation calls the original function provided by the
   `:wire-fn` in `->workflow*`."

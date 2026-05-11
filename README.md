@@ -33,12 +33,11 @@ Override or add new behavior using the `handle-step` multimethod:
 
 ```clojure
 (require '[big-config.pluggable :as pluggable])
-(require '[big-config.core :as core])
 
 (defmethod pluggable/handle-step ::my-step
-  [step step-fns opts]
-  (println "Hello from my custom step!")
-  (core/ok opts))
+  [f step step-fns opts]
+  (println "Hello from my custom step!" step (count step-fns))
+  (f opts))
 ```
 
 ### Registering Steps in the DSL
@@ -46,7 +45,9 @@ Override or add new behavior using the `handle-step` multimethod:
 To ensure your custom step is recognized by the `bb` command (rather than being treated as a raw shell command), register it using the `*parse-args-steps*` dynamic var:
 
 ```clojure
-(binding [workflow/*parse-args-steps* (conj workflow/*parse-args-steps* "my-step")]
+(require '[big-config.workflow :as workflow])
+
+(binding [workflow/*parse-args-steps* (conj workflow/*parse-args-steps* :my-step)]
   (workflow/parse-args ["my-step" "render"]))
 ```
 
@@ -79,15 +80,15 @@ clojure -Tbig-config package :owner acme :repository infra :ssh-key 123456 :targ
 When used with Babashka, BigConfig provides a concise DSL for running workflows directly from the shell:
 
 ```shell
-# Render configs, acquire a lock, run Tofu, and unlock—all in one command
-bb render lock tofu:init tofu:apply -- alpha prod
+# Render configs, acquire a lock, run Tofu, and append a raw shell command
+bb render lock tofu:init tofu:apply -- tofu apply -auto-approve
 ```
 
 - `render`: Generates configuration files.
 - `lock`: Acquires a pessimistic lock via Git tags.
 - `tofu:init`: Executes `tofu init` in the rendered directory.
-- `unlock-any`: Force-releases the lock.
-- `-- alpha prod`: Specifies the **module** and **profile**.
+- `tofu:apply`: Executes `tofu apply` in the rendered directory.
+- `-- tofu apply -auto-approve`: Adds one raw command string to the `exec` step.
 
 ## Documentation & Resources
 

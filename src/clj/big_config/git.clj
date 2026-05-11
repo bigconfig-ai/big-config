@@ -48,7 +48,6 @@
 
 (def ^{:doc "Check if the local revision matches origin"
        :arglists '([]
-                   [opts]
                    [step-fns opts])}
   check (->workflow {:first-step ::git-diff
                      :wire-fn (fn [step _]

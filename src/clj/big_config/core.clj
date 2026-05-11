@@ -73,7 +73,7 @@
      omitted, it defaults to `::end`, sharing the same namespace as `:first-step`.
    * **`:wire-fn`** (Required): A function that accepts two arguments—the
      current step and the `step-fns`. `step-fns` is used to invoke subworkflow
-     using `partial`. It must return a `seq` of function and next step.
+     using `partial`. It must return `[step-fn next-step]`.
    * **`:next-fn`** (Optional): A function used to handle complex or conditional
      branching logic when the default transitions provided by the `wire-fn` are
      insufficient.
@@ -87,8 +87,8 @@
                                      ::start [#(ok %) ::sub-wf]
                                      ::sub-wf [(partial sub-wf step-fns) ::end]
                                      ::end [identity]))})]
-    (wf [my-step-fn] {::my :value})
-    (wf [my-step-fn] [{::my :value} {::his :value}]))
+    (wf) ; => [::start ::end]
+    (wf [my-step-fn] {::my :value}))
   ```
 
   Example of a workflow with `next-fn`:
@@ -155,12 +155,12 @@
                                                 (merge opts {::bc/exit 1
                                                              ::bc/err "Failure"})) ::end]
                                      ::end [identity]))})]
-    (wf {})))
+    (wf [] {})))
 
 (defn ->step-fn
-  "A step function is a function that accepts three arguments: the step, the
-  step name, and the `opts` map. To maintain the execution chain, it must return
-  the updated (or original) `opts` map.
+  "A step function is middleware that accepts three arguments: the wrapped step
+  function, the step keyword, and the `opts` map. To maintain the execution
+  chain, it must return the updated (or original) `opts` map.
 
   For convenience, `->step-fn` allows you to provide two simpler functions. These
   functions take only two arguments—the step and the `opts` map—and do not need to

@@ -122,8 +122,7 @@
 (def
   ^{:doc
     "This workflow is used to acquire the `lock-id`. See the namespace `big-config.lock`."
-    :arglists '([] [opts] [step-fns opts]
-                   [[opts]] [step-fns [opts]])}
+    :arglists '([] [step-fns opts])}
   lock (->workflow {:first-step ::generate-lock-id
                     :wire-fn (fn [step _]
                                (case step

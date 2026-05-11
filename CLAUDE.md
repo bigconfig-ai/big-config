@@ -51,7 +51,6 @@ big-config/
 | `big-config.store` | Redis-backed event-sourcing store (`write!`, `restore!`) |
 | `big-config.system` | Lifecycle management (alternative to Integrant) |
 | `big-config.git` | Git helpers (check, push) |
-| `big-config.step` | Step DSL: colon syntax `tofu:plan` → `tofu plan` |
 | `big-config.step-fns` | Step function wrappers (`->step-fn`, `log-step-fn`) |
 | `big-config.utils` | Helpers: `deep-merge`, `debug` macro, `keyword->path`, Specter walkers |
 | `big-config.selmer-filters` | Custom Selmer template filters |
@@ -90,32 +89,32 @@ Override or add steps via `big-config.pluggable/handle-step`:
 
 ```clojure
 (require '[big-config.pluggable :as pluggable])
-(require '[big-config.core :as core])
 
 (defmethod pluggable/handle-step ::my-step
-  [_f step step-fns opts]
-  (println "Custom step!")
-  (core/ok opts))
+  [f step step-fns opts]
+  (println "Custom step!" step (count step-fns))
+  (f opts))
 ```
 
 To register a step in the DSL (so it's not treated as a raw shell command):
 
 ```clojure
-(binding [workflow/*parse-args-steps* (conj workflow/*parse-args-steps* "my-step")]
+(require '[big-config.workflow :as workflow])
+
+(binding [workflow/*parse-args-steps* (conj workflow/*parse-args-steps* :my-step)]
   (workflow/parse-args ["my-step" "render"]))
 ```
 
 ### CLI DSL (Babashka)
 
 ```shell
-bb render lock tofu:init tofu:apply -- alpha prod
-#  │      │    │                       │     └── profile
-#  │      │    │                       └── module
+bb render lock tofu:init tofu:apply -- tofu apply -auto-approve
+#  │      │    │                       └── raw shell command
 #  step   step colon-syntax (tofu init)
 ```
 
 Colon syntax: `tool:subcommand` maps to `tool subcommand` in the shell.
-`--` separates workflow steps from positional args (module, profile).
+`--` separates workflow steps and colon-mapped commands from one raw shell command.
 
 ### Configuration Overrides via Environment Variables
 
