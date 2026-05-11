@@ -47,13 +47,13 @@ The patch number is calculated with `git rev-list --count HEAD`
 
 ### Added
 
-- New website: https://www.big-config.it
-- `big-config` has integrated and extended `deps-edn`: https://www.big-config.it/guides/build/
+- New website: https://www.bigconfig.ai
+- `big-config` has integrated and extended `deps-edn`: https://www.bigconfig.ai/guides/build/
   - `render` is the new name of the step and it should be used intead of `build` that was invoking `deps-new`
   - `selmer` as templating language
   - `src` is interpolated like `target`
   - `src` can be a symbol or a function to generate files with code
-- Clojure Tools is used to generate `big-config` templates: https://www.big-config.it/guides/clojure-tools/
+- Clojure Tools is used to generate `big-config` templates: https://www.bigconfig.ai/guides/clojure-tools/
   - action: Create a GitHub action for the CI of a Clojure project.
   - ansible: Create a repo to manage Ansible projects with BigConfig.
   - devenv: Create the devenv files for Clojure and Babashka development.
@@ -64,11 +64,11 @@ The patch number is calculated with `git rev-list --count HEAD`
   - tools: Create a tools.clj for a Clojure project.
 - Template `dotfiles` is inspired by https://www.chezmoi.io/
 - Many blog articles:
-  - https://www.big-config.it/blog/a-new-approach-to-dotfiles-management-with-bigconfig/
-  - https://www.big-config.it/blog/why-ansible-still-rules-for-your-dev-environment/
-  - https://www.big-config.it/blog/reimplementing-aws-eks-with-big-config/
-  - https://www.big-config.it/blog/killer-feature-big-config/
-  - https://www.big-config.it/blog/big-config-replaces-atlantis/
+  - https://www.bigconfig.ai/blog/a-new-approach-to-dotfiles-management-with-bigconfig/
+  - https://www.bigconfig.ai/blog/why-ansible-still-rules-for-your-dev-environment/
+  - https://www.bigconfig.ai/blog/reimplementing-aws-eks-with-big-config/
+  - https://www.bigconfig.ai/blog/killer-feature-big-config/
+  - https://www.bigconfig.ai/blog/big-config-replaces-atlantis/
 - Looking for a logo. My skills are not good enough.
 
 ## [0.2.187] - 2025-07-30

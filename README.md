@@ -62,7 +62,7 @@ export BC_PAR_CLOUDFLARE_ZONE_ID="your-zone-id"
 
 ## Installation
 
-BigConfig is typically used as a Clojure tool or via Babashka. For detailed instructions, visit the [Getting Started](https://www.big-config.it/start-here/getting-started/) guide.
+BigConfig is typically used as a Clojure tool or via Babashka. For detailed instructions, visit the [installation](https://www.bigconfig.ai/manual/#install) guide.
 
 ```shell
 # Add BigConfig as a tool to Clojure
@@ -92,9 +92,7 @@ bb render lock tofu:init tofu:apply -- tofu apply -auto-approve
 
 ## Documentation & Resources
 
-- **[Full Documentation](https://www.big-config.it/)**
-- **[Getting Started Guide](https://www.big-config.it/start-here/getting-started/)**
-- **[API Reference](https://www.big-config.it/api/core)**
+- **[Full Documentation](https://www.bigconfig.ai/manual/)**
 
 ---
 Developed and maintained by [Alberto Miorin](https://albertomiorin.com).
