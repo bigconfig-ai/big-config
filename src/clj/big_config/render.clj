@@ -132,6 +132,7 @@
    [babashka.fs :as fs]
    [big-config.core :as core]
    [big-config.selmer-filters :refer [whitespace-control]]
+   [big-config.utils :refer [->fn]]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -292,14 +293,8 @@
       (let [step-module (:big-config.step/module opts)
             step-profile (:big-config.step/profile opts)
             {:keys [data-fn template-fn] :as edn} (first xs)
-            data-fn (cond
-                      (nil? data-fn) (fn [data _] data)
-                      (fn? data-fn) data-fn
-                      (symbol? data-fn) (requiring-resolve data-fn))
-            template-fn (cond
-                          (nil? template-fn) (constantly edn)
-                          (fn? template-fn) template-fn
-                          (symbol? template-fn) (requiring-resolve template-fn))
+            data-fn (->fn data-fn (fn [data _] data))
+            template-fn (->fn template-fn (constantly edn))
             data (-> (apply dissoc edn template-keys)
                      (merge {:module (or step-module module)
                              :profile (or step-profile profile)})
@@ -332,10 +327,7 @@
                       :data data
                       (reduce concat (vec %))) transform)
         (doseq [post-process-fn (get-multi-option edn :post-process-fn)]
-          (let [post-process-fn (cond
-                                  (nil? post-process-fn) (constantly nil)
-                                  (fn? post-process-fn) post-process-fn
-                                  (symbol? post-process-fn) (requiring-resolve post-process-fn))]
+          (let [post-process-fn (->fn post-process-fn (constantly nil))]
             (post-process-fn edn data)))
         (recur (rest xs)))))
   (core/ok opts))

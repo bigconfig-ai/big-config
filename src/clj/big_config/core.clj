@@ -1,7 +1,8 @@
 (ns big-config.core
   "A workflow performs a series of steps, threading an `opts` map through each one."
   (:require
-   [big-config :as bc]))
+   [big-config :as bc]
+   [big-config.utils :refer [->fn]]))
 
 (defn ok
   "Return opts with success. Each step must return `opts` with a
@@ -39,11 +40,7 @@
             (partial f-next f-acc)) (fn [_ opts] (f opts)) step-fns))
 
 (defn- resolve-step-fns [step-fns]
-  (-> (map (fn [f] (cond
-                     (ifn? f) f
-                     (string? f) (-> f symbol requiring-resolve)
-                     :else (throw (ex-info "f is neither a string nor a fn" {:f f}))))
-           step-fns)
+  (-> (map ->fn step-fns)
       reverse))
 
 (defn- try-f [f step opts]

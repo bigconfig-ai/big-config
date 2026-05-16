@@ -43,6 +43,36 @@
      (when (nil? (val pair#))
        (throw (IllegalArgumentException. (format "Argument %s is nil" (key pair#)))))))
 
+(defn ->fn
+  "Coerce `v` into a function:
+
+  * a function          -> returned unchanged
+  * a symbol or string  -> resolved via `requiring-resolve`
+  * any other `ifn?`    -> returned unchanged (e.g. keyword, set, var)
+  * `nil`               -> `default`; with the 1-arity (no `default`
+                           supplied) a nil `v` throws, since the value is
+                           then required
+
+  Throws `ex-info` with structured `{:big-config/err-kind ::not-a-fn}` data
+  on anything that is not coercible. This is the single source of truth that
+  replaces the ad-hoc fn-or-symbol `cond`s previously duplicated across
+  `big-config.core`, `big-config.workflow` and `big-config.render`."
+  ([v] (->fn v ::required))
+  ([v default]
+   (cond
+     (fn? v)     v
+     (symbol? v) (requiring-resolve v)
+     (string? v) (requiring-resolve (symbol v))
+     (ifn? v)    v
+     (nil? v)    (if (= ::required default)
+                   (throw (ex-info "Required value is nil; expected a function, symbol or string"
+                                   {:big-config/err-kind ::not-a-fn :value v}))
+                   default)
+     :else       (throw (ex-info "Cannot coerce value to a function"
+                                  {:big-config/err-kind ::not-a-fn
+                                   :value v
+                                   :type (type v)})))))
+
 (defn keyword->path
   "Converts a keyword into a file path string. Namespaces are treated as
   directories and dots are converted into slashes.

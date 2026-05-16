@@ -4,6 +4,7 @@
    [big-config.core :refer [->workflow]]
    [big-config.run :as run]
    [big-config.step-fns :refer [->print-error-step-fn]]
+   [big-config.utils :as utils]
    [bling.core :refer [bling]]
    [clojure.test :refer [deftest is testing]]))
 
@@ -51,6 +52,33 @@
                    (->> (wf step-fns {::bar :baz})
                         (into (sorted-map))))]
       (is (= expect actual)))))
+
+(deftest ->fn-test
+  (testing "a function is returned unchanged"
+    (is (= identity (utils/->fn identity))))
+  (testing "a symbol is resolved via requiring-resolve"
+    (is (= #'clojure.core/inc (utils/->fn 'clojure.core/inc))))
+  (testing "a string is resolved (previously yielded nil -> NPE in render)"
+    (is (= #'clojure.core/inc (utils/->fn "clojure.core/inc")))
+    (is (= 2 ((utils/->fn "clojure.core/inc") 1))))
+  (testing "any other ifn (e.g. keyword) is passed through"
+    (is (= :k (utils/->fn :k))))
+  (testing "nil with a default returns the default"
+    (let [d (constantly :default)]
+      (is (= d (utils/->fn nil d)))))
+  (testing "nil without a default throws structured ex-info"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Required value is nil"
+                          (utils/->fn nil)))
+    (is (= ::utils/not-a-fn
+           (try (utils/->fn nil)
+                (catch clojure.lang.ExceptionInfo e
+                  (:big-config/err-kind (ex-data e)))))))
+  (testing "a non-coercible value throws structured ex-info (no silent nil)"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot coerce value to a function"
+                          (utils/->fn 42)))
+    (is (= 42 (try (utils/->fn 42)
+                   (catch clojure.lang.ExceptionInfo e
+                     (:value (ex-data e))))))))
 
 (comment
   (a-step-fn nil nil nil)

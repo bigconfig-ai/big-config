@@ -282,7 +282,7 @@
    [big-config.render :as render]
    [big-config.run :as run]
    [big-config.unlock :as unlock]
-   [big-config.utils :refer [assert-args-present debug keyword->name
+   [big-config.utils :refer [->fn assert-args-present debug keyword->name
                              keyword->path]]
    [bling.core :refer [bling]]
    [clojure.string :as str]
@@ -330,11 +330,9 @@
 
 (defn- resolve-fn [kw opts]
   (let [f (get opts kw)]
-    (cond
-      (nil? f) (throw (ex-info (format "`%s` not defined" kw) opts))
-      (fn? f) f
-      (symbol? f) (requiring-resolve f)
-      :else (throw (ex-info (format "Value for `%s` is neither a function nor a symbol" kw) opts)))))
+    (if (nil? f)
+      (throw (ex-info (format "`%s` not defined" kw) opts))
+      (->fn f))))
 
 (defn select-globals [{:keys [globals] :as opts}]
   (->> (or globals [::bc/env
