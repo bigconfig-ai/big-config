@@ -1,0 +1,40 @@
+(ns <{ namespace }>.params
+  (:require
+   [babashka.process :as p]
+   [big-config.render :as render]
+   [big-config.utils :refer [debug]]
+   [big-config.workflow :as workflow]
+   [cheshire.core :as json]
+   [com.rpl.specter :as s]
+   [<{ namespace }>.options :as options]))
+
+(defn tofu-params
+  [opts]
+  (let [dir (workflow/path opts :<{ namespace }>.tools/tofu)]
+    (merge-with merge opts {::workflow/params (try
+                                                (or (-> (p/shell {:dir dir
+                                                                  :out :string
+                                                                  :err :string}
+                                                                 "tofu output --json")
+                                                        :out
+                                                        (json/parse-string keyword)
+                                                        (->> (s/select-one [:params :value])))
+                                                    {:ip "192.168.0.1"})
+                                                (catch Exception _
+                                                  {:ip "192.168.0.1"}))})))
+
+(def opts-fn (comp tofu-params workflow/read-bc-pars))
+
+(defn <{ repository }>-opts
+  [opts]
+  (-> opts
+      (workflow/new-prefix :<{ namespace }>.package/start-create-or-delete)
+      opts-fn))
+
+(comment
+  (debug tap-values
+    (-> options/bb
+        (workflow/new-prefix :<{ namespace }>.package/start-create-or-delete)
+        opts-fn))
+  (<{ repository }>-opts options/bb)
+  (-> tap-values))

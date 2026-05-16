@@ -1,0 +1,100 @@
+(ns <{ namespace }>.options
+  (:require
+   [big-config.render :as render]
+   [big-config.utils :refer [debug]]
+   [big-config.workflow :as workflow]))
+
+(def ^:private common
+  {::workflow/params {:package "<{ repository }>"
+                      :compute-prevent-destroy true}})
+
+(def ^:private deploy
+  {::workflow/params {:compute-pubkey "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC7wHJ5R1YJ7h2ZxVchzThqgDZX4iF7aX6IXYQm2J9iN compute@example"}})
+
+(def ^:private s3
+  {::workflow/params {:provider-backend "s3"
+                      :s3-bucket "REPLACE_ME"
+                      :s3-region "eu-west-1"}})
+
+(def ^:private r2
+  {::workflow/params {:provider-backend "r2"
+                      :r2-bucket "REPLACE_ME"
+                      :r2-endpoint "https://REPLACE_ME.r2.cloudflarestorage.com"
+                      :r2-access-key-id "REPLACE_ME"
+                      :r2-secret-access-key "REPLACE_ME"}})
+
+(def ^:private local
+  {::workflow/params {:provider-backend "local"}})
+
+(def ^:private oci
+  {::workflow/params {:provider-compute "oci"
+                      :oci-config-file-profile "DEFAULT"
+                      :oci-subnet-id "ocid1.subnet.oc1..REPLACE_ME"
+                      :oci-compartment-id "ocid1.compartment.oc1..REPLACE_ME"
+                      :oci-availability-domain "REPLACE_ME:REGION-AD-1"
+                      :oci-display-name "<{ repository }>"
+                      :oci-shape "VM.Standard.A1.Flex"
+                      :oci-ocpus 1
+                      :oci-memory-in-gbs 4
+                      :oci-boot-volume-size-in-gbs 50
+                      :oci-boot-volume-vpus-per-gb 30
+                      :oci-ssh-authorized-keys "~/.ssh/id_ed25519.pub"}})
+
+(def ^:private hcloud
+  {::workflow/params {:provider-compute "hcloud"
+                      :hcloud-token "REPLACE_ME"
+                      :hcloud-name "<{ repository }>"
+                      :hcloud-image "ubuntu-24.04"
+                      :hcloud-server-type "cx23"
+                      :hcloud-location "hel1"
+                      :hcloud-ssh-keys "REPLACE_ME"}})
+
+(def ^:private digitalocean
+  {::workflow/params {:provider-compute "digitalocean"
+                      :do-token "REPLACE_ME"
+                      :digitalocean-name "<{ repository }>"
+                      :digitalocean-region "ams3"
+                      :digitalocean-size "s-1vcpu-1gb-35gb-intel"
+                      :digitalocean-image "ubuntu-25-10-x64"
+                      :digitalocean-vpc-uuid "REPLACE_ME"
+                      :digitalocean-ssh-keys "REPLACE_ME"}})
+
+(def ^:private no-infra-compute
+  {::workflow/params {:provider-compute "no-infra"
+                      :no-infra-compute-ip "192.168.0.1"
+                      :no-infra-compute-user "ubuntu"
+                      :no-infra-compute-sudoer "ubuntu"
+                      :no-infra-compute-uid "1000"
+                      :no-infra-compute-name "<{ repository }>"}})
+
+(def oci-profile
+  (merge-with merge common local oci deploy {::render/profile "oci"}))
+
+(def hcloud-profile
+  (merge-with merge common local hcloud deploy {::render/profile "hcloud"}))
+
+(def digitalocean-profile
+  (merge-with merge common local digitalocean deploy {::render/profile "digitalocean"}))
+
+(def no-infra
+  (merge-with merge common local no-infra-compute {::render/profile "no-infra"}))
+
+(def bb hcloud-profile)
+
+(comment
+  ;; Change `bb` above to switch profiles, or compose your own profile with
+  ;; `s3` / `r2` / `local` and one compute provider.
+  (debug tap-values
+    (-> {:s3 s3
+         :r2 r2
+         :local local
+         :oci oci
+         :hcloud hcloud
+         :digitalocean digitalocean
+         :no-infra-compute no-infra-compute
+         :oci-profile oci-profile
+         :hcloud-profile hcloud-profile
+         :digitalocean-profile digitalocean-profile
+         :no-infra no-infra
+         :bb bb}))
+  (-> tap-values))

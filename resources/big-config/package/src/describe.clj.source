@@ -1,0 +1,125 @@
+(ns <{ namespace }>.describe
+  "Describe the active profile after provisioning."
+  (:require
+   [babashka.process :as p]
+   [big-config.utils :refer [debug]]
+   [big-config.workflow :as workflow]
+   [clojure.string :as str]
+   [<{ namespace }>.options :as options]
+   [<{ namespace }>.params :as params]))
+
+(def ^:private run-timeout-ms 30000)
+(def ^:private ssh-probe-timeout-ms 10000)
+
+(defn- run
+  ([args] (run args {}))
+  ([args {:keys [timeout-ms extra-env]
+          :or {timeout-ms run-timeout-ms}}]
+   (try
+     (let [proc (p/process args (cond-> {:in (java.io.ByteArrayInputStream. (byte-array 0))
+                                         :out :string
+                                         :err :string}
+                                  (seq extra-env) (assoc :extra-env extra-env)))
+           result (deref proc timeout-ms ::timeout)]
+       (if (= ::timeout result)
+         (do
+           (p/destroy-tree proc)
+           {:ok? false :exit -1 :out ""
+            :err (format "command timed out after %dms" timeout-ms)})
+         (let [{:keys [exit out err]} result]
+           {:ok? (zero? exit) :exit exit :out out :err err})))
+     (catch Exception e
+       {:ok? false :exit -1 :out "" :err (.getMessage e)}))))
+
+(defn- trim-snippet
+  [s]
+  (let [s (some-> s str/trim)]
+    (when-not (str/blank? s)
+      (if (> (count s) 200) (str (subs s 0 200) "…") s))))
+
+(defn- result-detail
+  [label {:keys [exit out err]}]
+  (let [snippet (or (trim-snippet err) (trim-snippet out))]
+    (format "%s failed (exit %d)%s"
+            label
+            (or exit -1)
+            (if snippet (str " — " snippet) ""))))
+
+(defn provider-summary
+  "Return configured provider names from merged params."
+  [params]
+  {:compute (:provider-compute params)
+   :backend (:provider-backend params)})
+
+(defn- compute-target
+  [{:keys [provider-compute ip user sudoer no-infra-compute-ip
+           no-infra-compute-user no-infra-compute-sudoer]}]
+  (let [ip (if (and (= provider-compute "no-infra")
+                    (or (str/blank? ip) (= "192.168.0.1" ip))
+                    (not (str/blank? no-infra-compute-ip)))
+             no-infra-compute-ip
+             ip)]
+    {:ip ip
+     :user (or (not-empty user)
+               (not-empty no-infra-compute-user)
+               (not-empty sudoer)
+               (not-empty no-infra-compute-sudoer)
+               "root")}))
+
+(defn- ssh-base-args
+  [{:keys [ip user]}]
+  ["ssh"
+   "-o" "BatchMode=yes"
+   "-o" "ConnectTimeout=5"
+   "-o" "StrictHostKeyChecking=accept-new"
+   (str user "@" ip)])
+
+(defn- ssh-run
+  [run-fn compute remote-args timeout-ms]
+  (run-fn (into (ssh-base-args compute) remote-args)
+          {:timeout-ms timeout-ms}))
+
+(defn- compute-status
+  [run-fn params]
+  (let [{:keys [ip] :as target} (compute-target params)]
+    (cond
+      (str/blank? ip)
+      (assoc target :running? false :detail "missing IP address")
+
+      :else
+      (let [{:keys [ok?] :as result} (ssh-run run-fn target ["true"] ssh-probe-timeout-ms)]
+        (assoc target
+               :running? (boolean ok?)
+               :detail (if ok?
+                         "ssh ok"
+                         (str (result-detail "ssh" result)
+                              (when (= "192.168.0.1" ip)
+                                "; no Tofu output found or host is down"))))))))
+
+(defn describe
+  [opts]
+  (let [{:keys [::workflow/params]} (params/<{ repository }>-opts opts)]
+    {:providers (provider-summary params)
+     :compute (compute-status run params)}))
+
+(defn format-report
+  [{:keys [providers compute]}]
+  (str "Compute provider: " (or (:compute providers) "unknown") "\n"
+       "Backend provider: " (or (:backend providers) "unknown") "\n"
+       "Compute IP: " (or (:ip compute) "unknown") "\n"
+       "SSH user: " (or (:user compute) "unknown") "\n"
+       "SSH reachability: " (if (:running? compute) "ok" "failed") "\n"
+       "Detail: " (:detail compute)))
+
+(defn describe*
+  ([] (describe* [] options/bb))
+  ([opts] (describe* [] opts))
+  ([_args opts]
+   (let [report (describe opts)]
+     (println (format-report report))
+     report)))
+
+(comment
+  (debug tap-values
+    (describe* options/bb))
+  (-> tap-values))

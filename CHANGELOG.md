@@ -11,6 +11,8 @@ The patch number is calculated with `git rev-list --count HEAD`
 
 ### Added
 
+- compute-only `package` template now generates `options`, `params`, `describe`, and `validation` namespaces with `bb validate` and `bb describe` tasks.
+- `package` template supports provider-specific compute templates for `hcloud`, `oci`, `digitalocean`, and `no-infra`, plus `tofu-backend` templates for `local`, `s3`, and `r2`.
 - bump `selmer` to support template inheritance.
 - BigConfig Store is a datastore for Redis, a fork of https://github.com/klauswuestefeld/prevayler-clj .
 - BigConfig System is an alternative to Integrant to create systems with a workflow instead of a graph.
@@ -20,6 +22,8 @@ The patch number is calculated with `git rev-list --count HEAD`
 
 ### Changed
 
+- `package` template now accepts only `:owner`, `:repository`, `:target-dir`, and `:overwrite`; SSH keys and provider settings are configured in generated profiles or via `BC_PAR_*` overrides.
+- generated `package` projects use a compute-only lifecycle (`tofu -> ansible-local -> ansible`) with ping-only Ansible playbooks and ONCE-style `bb help` adapted for BigConfig.
 - refactor `workflow` to use keywords for steps in `parse-args` and `->workflow`, improving handling of namespaced steps.
 - rename `show-help` to `help`
 - -tidy -smoke-test -test and -test:bb are now private tasks

@@ -56,8 +56,8 @@ To ensure your custom step is recognized by the `bb` command (rather than being 
 BigConfig supports overriding project parameters through environment variables using the `BC_PAR_` prefix. This is particularly useful for CI/CD pipelines:
 
 ```shell
-# This overrides the :cloudflare-zone-id parameter
-export BC_PAR_CLOUDFLARE_ZONE_ID="your-zone-id"
+# This overrides the :provider-backend parameter
+export BC_PAR_PROVIDER_BACKEND="local"
 ```
 
 ## Installation
@@ -71,23 +71,25 @@ clojure -Ttools install-latest :lib io.github.amiorin/big-config :as big-config
 # Print help for all available templates
 clojure -A:deps -Tbig-config help/doc
 
-# Scaffold a new project using the package template
-clojure -Tbig-config package :owner acme :repository infra :ssh-key 123456 :target-dir my-infra
+# Scaffold a compute-only project using the package template
+clojure -Tbig-config package :owner acme :repository infra :target-dir my-infra
 ```
+
+The `package` template generates a compute-only BigConfig project with OpenTofu compute providers (`hcloud`, `oci`, `digitalocean`, `no-infra`), optional `tofu-backend` state configuration, ping-only Ansible workflows, and `bb validate` / `bb describe` tasks.
 
 ## The BigConfig DSL (Babashka)
 
 When used with Babashka, BigConfig provides a concise DSL for running workflows directly from the shell:
 
 ```shell
-# Render configs, acquire a lock, run Tofu, and append a raw shell command
-bb render lock tofu:init tofu:apply -- tofu apply -auto-approve
+# Render configs, acquire a lock, plan with Tofu, and append a raw apply command
+bb render lock tofu:init tofu:plan -- tofu apply -auto-approve
 ```
 
 - `render`: Generates configuration files.
 - `lock`: Acquires a pessimistic lock via Git tags.
 - `tofu:init`: Executes `tofu init` in the rendered directory.
-- `tofu:apply`: Executes `tofu apply` in the rendered directory.
+- `tofu:plan`: Executes `tofu plan` in the rendered directory.
 - `-- tofu apply -auto-approve`: Adds one raw command string to the `exec` step.
 
 ## Documentation & Resources

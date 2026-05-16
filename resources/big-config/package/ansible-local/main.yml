@@ -1,17 +1,7 @@
 ---
-- name: Managed Local Configuration
+- name: Ping local host
   hosts: local
+  gather_facts: false
   tasks:
-    - name: Configure SSH access for {{ name }}
-      ansible.builtin.blockinfile:
-        path: ~/.ssh/config
-        marker: "# {mark} {{ name }} ANSIBLE MANAGED BLOCK"
-        create: yes
-        mode: "0600"
-        block: |
-          Host {{ name }}
-              HostName {{ ip }}
-              User {{ user }}
-              IdentityFile ~/.ssh/id_ed25519
-              IdentitiesOnly yes
-              Port 22
+    - name: Ping localhost
+      ansible.builtin.ping:

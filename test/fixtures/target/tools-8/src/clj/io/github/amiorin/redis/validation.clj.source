@@ -1,0 +1,235 @@
+(ns io.github.amiorin.redis.validation
+  "Validate the active profile before provisioning compute."
+  (:require
+   [babashka.process :as p]
+   [big-config :as bc]
+   [big-config.utils :refer [debug]]
+   [big-config.workflow :as workflow]
+   [clojure.string :as str]
+   [io.github.amiorin.redis.options :as options]))
+
+(def ^:private run-timeout-ms 30000)
+
+(defn- run
+  ([args] (run args {}))
+  ([args {:keys [timeout-ms extra-env]
+          :or {timeout-ms run-timeout-ms}}]
+   (try
+     (let [proc (p/process args (cond-> {:in (java.io.ByteArrayInputStream. (byte-array 0))
+                                         :out :string
+                                         :err :string}
+                                  (seq extra-env) (assoc :extra-env extra-env)))
+           result (deref proc timeout-ms ::timeout)]
+       (if (= ::timeout result)
+         (do
+           (p/destroy-tree proc)
+           {:ok? false :exit -1 :out ""
+            :err (format "command timed out after %dms" timeout-ms)})
+         (let [{:keys [exit out err]} result]
+           {:ok? (zero? exit) :exit exit :out out :err err})))
+     (catch Exception e
+       {:ok? false :exit -1 :out "" :err (.getMessage e)}))))
+
+(defn- trim-snippet
+  [s]
+  (let [s (some-> s str/trim)]
+    (when-not (str/blank? s)
+      (if (> (count s) 200) (str (subs s 0 200) "…") s))))
+
+(defn- result-detail
+  [label {:keys [exit out err]}]
+  (let [snippet (or (trim-snippet err) (trim-snippet out))]
+    (format "%s failed (exit %d)%s"
+            label
+            (or exit -1)
+            (if snippet (str " — " snippet) ""))))
+
+(defn- error
+  [category message]
+  {:category category :message message})
+
+(defn- missing?
+  [v]
+  (or (nil? v)
+      (and (string? v) (str/blank? v))))
+
+(defn- placeholder?
+  [v]
+  (and (string? v)
+       (or (= "REPLACE_ME" v)
+           (str/includes? v "REPLACE_ME"))))
+
+(def ^:private common-tools ["tofu" "ansible-playbook" "ssh"])
+
+(def ^:private provider-tools
+  {"hcloud" ["hcloud"]
+   "digitalocean" ["doctl"]
+   "oci" ["oci"]
+   "no-infra" []})
+
+(def ^:private required-backend
+  {"s3" [:s3-bucket :s3-region]
+   "r2" [:r2-bucket :r2-endpoint :r2-access-key-id :r2-secret-access-key]
+   "local" []})
+
+(def ^:private required-compute
+  {"hcloud" [:provider-compute :hcloud-token :hcloud-name :hcloud-image :hcloud-server-type :hcloud-location :hcloud-ssh-keys]
+   "digitalocean" [:provider-compute :do-token :digitalocean-name :digitalocean-region :digitalocean-size
+                   :digitalocean-image :digitalocean-vpc-uuid :digitalocean-ssh-keys]
+   "oci" [:provider-compute :oci-config-file-profile :oci-subnet-id :oci-compartment-id :oci-availability-domain
+          :oci-display-name :oci-shape :oci-ocpus :oci-memory-in-gbs :oci-boot-volume-size-in-gbs
+          :oci-boot-volume-vpus-per-gb :oci-ssh-authorized-keys]
+   "no-infra" [:provider-compute :no-infra-compute-ip :no-infra-compute-user :no-infra-compute-sudoer
+               :no-infra-compute-uid :no-infra-compute-name]})
+
+(defn- require-params
+  [category params ks]
+  (for [k ks
+        :let [v (get params k)]
+        :when (or (missing? v) (placeholder? v))]
+    (error category (format "missing or placeholder param %s" k))))
+
+(defn- command-exists?
+  [cmd]
+  (:ok? (run ["sh" "-c" (format "command -v %s >/dev/null 2>&1" cmd)])))
+
+(defn- tool-errors
+  [provider]
+  (for [cmd (distinct (concat common-tools (get provider-tools provider [])))
+        :when (not (command-exists? cmd))]
+    (error :tools (format "required command `%s` was not found on PATH" cmd))))
+
+(defn- cloud-provider?
+  [provider]
+  (#{"hcloud" "digitalocean" "oci"} provider))
+
+(defn- hcloud-credential-errors
+  [{:keys [hcloud-token]}]
+  (cond
+    (or (missing? hcloud-token) (placeholder? hcloud-token))
+    [(error :credentials "missing or placeholder :hcloud-token")]
+
+    (not (command-exists? "hcloud"))
+    []
+
+    :else
+    (let [{:keys [ok?] :as result} (run ["hcloud" "server-type" "list"]
+                                        {:extra-env {"HCLOUD_TOKEN" hcloud-token}})]
+      (when-not ok?
+        [(error :credentials (result-detail "hcloud credentials" result))]))))
+
+(defn- digitalocean-credential-errors
+  [{:keys [do-token]}]
+  (cond
+    (or (missing? do-token) (placeholder? do-token))
+    [(error :credentials "missing or placeholder :do-token")]
+
+    (not (command-exists? "doctl"))
+    []
+
+    :else
+    (let [{:keys [ok?] :as result} (run ["doctl" "account" "get"]
+                                        {:extra-env {"DIGITALOCEAN_ACCESS_TOKEN" do-token}})]
+      (when-not ok?
+        [(error :credentials (result-detail "DigitalOcean credentials" result))]))))
+
+(defn- oci-credential-errors
+  [{:keys [oci-config-file-profile]}]
+  (cond
+    (or (missing? oci-config-file-profile) (placeholder? oci-config-file-profile))
+    [(error :credentials "missing or placeholder :oci-config-file-profile")]
+
+    (not (command-exists? "oci"))
+    []
+
+    :else
+    (let [{:keys [ok?] :as result} (run ["oci" "iam" "region" "list" "--profile" oci-config-file-profile])]
+      (when-not ok?
+        [(error :credentials (result-detail "OCI credentials" result))]))))
+
+(defn- credential-errors
+  [{:keys [provider-compute] :as params}]
+  (case provider-compute
+    "hcloud" (hcloud-credential-errors params)
+    "digitalocean" (digitalocean-credential-errors params)
+    "oci" (oci-credential-errors params)
+    "no-infra" []
+    [(error :schema (format "unsupported :provider-compute %s" (pr-str provider-compute)))]))
+
+(defn- normalize-pubkey
+  [s]
+  (->> (str/split (str/trim (or s "")) #"\s+")
+       (take 2)
+       (str/join " ")))
+
+(defn- ssh-agent-errors
+  [{:keys [provider-compute compute-pubkey]}]
+  (cond
+    (not (cloud-provider? provider-compute))
+    []
+
+    (missing? (System/getenv "SSH_AUTH_SOCK"))
+    [(error :credentials "SSH_AUTH_SOCK is not set; start ssh-agent and add the private key for :compute-pubkey")]
+
+    (missing? compute-pubkey)
+    [(error :credentials "missing :compute-pubkey")]
+
+    :else
+    (let [{:keys [ok? out] :as result} (run ["ssh-add" "-L"])
+          wanted (normalize-pubkey compute-pubkey)
+          loaded (->> (str/split-lines (or out ""))
+                      (map normalize-pubkey)
+                      set)]
+      (cond
+        (not ok?)
+        [(error :credentials (result-detail "ssh-add -L" result))]
+
+        (not (contains? loaded wanted))
+        [(error :credentials ":compute-pubkey is not loaded in ssh-agent")]
+
+        :else []))))
+
+(defn validate-profile
+  [opts]
+  (let [{:keys [::workflow/params]} (workflow/read-bc-pars opts)
+        provider (:provider-compute params)
+        backend (:provider-backend params)]
+    (vec (concat
+          (when-not (contains? required-compute provider)
+            [(error :schema (format "unsupported :provider-compute %s" (pr-str provider)))])
+          (when-not (contains? required-backend backend)
+            [(error :schema (format "unsupported :provider-backend %s" (pr-str backend)))])
+          (require-params :schema params (get required-compute provider []))
+          (require-params :schema params (get required-backend backend []))
+          (when (cloud-provider? provider)
+            (require-params :schema params [:compute-pubkey]))
+          (tool-errors provider)
+          (credential-errors params)
+          (ssh-agent-errors params)))))
+
+(defn- print-report
+  [errors]
+  (if (empty? errors)
+    (println "Validation passed.")
+    (do
+      (println "Validation failed:")
+      (doseq [[category xs] (group-by :category errors)]
+        (println (format "\n%s" (-> category name str/upper-case)))
+        (doseq [{:keys [message]} xs]
+          (println " -" message))))))
+
+(defn validate*
+  ([] (validate* [] options/bb))
+  ([opts] (validate* [] opts))
+  ([_args opts]
+   (let [errors (validate-profile opts)]
+     (print-report errors)
+     (when (and (seq errors)
+                (not= :repl (::bc/env opts)))
+       (System/exit 1))
+     {:errors errors})))
+
+(comment
+  (debug tap-values
+    (validate* (assoc options/bb ::bc/env :repl)))
+  (-> tap-values))

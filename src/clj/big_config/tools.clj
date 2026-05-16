@@ -3,7 +3,7 @@
 
   ### Available Templates
 
-    * `package`: Scaffold a BigConfig package for deep automation.
+    * `package`: Scaffold a compute-only BigConfig package.
     * `devenv`: Generate `devenv` files for Clojure and Babashka development.
     * `action`: Create GitHub Actions workflows for Clojure projects.
 
@@ -113,7 +113,7 @@
 
 (s/def ::owner non-blank-string?)
 (s/def ::repository non-blank-string?)
-(s/def ::package (s/keys :req-un [::target-dir ::overwrite ::owner ::repository ::ssh-key]))
+(s/def ::package (s/keys :req-un [::target-dir ::overwrite ::owner ::repository]))
 
 (defn data-fn [{:keys [owner repository] :as data} _ops]
   (let [namespace (format "io.github.%s.%s" owner repository)
@@ -124,17 +124,16 @@
         (assoc :path path))))
 
 (defn package
-  "Create a BigConfig package.
+  "Create a compute-only BigConfig package.
 
   Options:
   - :owner       GitHub owner
   - :repository  GitHub repository
-  - :ssh-key     Digitalocean ssh-key
   - :target-dir  target directory for the template (`package` is the default)
   - :overwrite   true or :delete (the target directory)
 
   Example:
-    clojure -Tbig-config package"
+    clojure -Tbig-config package :owner your-github-user :repository your-repo"
   [& {:as args}]
   (let [delimiters {:tag-open \<
                     :tag-close \>
@@ -155,16 +154,15 @@
                                                 "dir-locals.el" ".dir-locals.el"}
                                                delimiters]
                                               ["src" "src/clj/{{ path }}" delimiters]
-                                              ["test" "test/clj/{{ path }}" delimiters]
-                                              ["tofu" "src/resources/{{ path }}/tools/tofu" delimiters]]})))
+                                              ["tofu" "src/resources/{{ path }}/tools/tofu" :raw]
+                                              ["tofu-backend" "src/resources/{{ path }}/tools/tofu-backend" :raw]]})))
 
 (comment
   (debug tap-values
     (package :opts {::bc/env :repl}
              :target-dir "../../joe"
              :owner 'amiorin
-             :repository 'joe
-             :ssh-key '812184))
+             :repository 'joe))
   (-> tap-values))
 
 (s/def ::terraform (s/keys :req-un [::target-dir ::overwrite ::aws-profile ::region ::dev ::prod]))

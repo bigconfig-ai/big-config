@@ -1,10 +1,7 @@
 ---
-- name: Managed Server Configuration
+- name: Ping compute host
   hosts: all
+  gather_facts: false
   tasks:
-    - name: Install redis
-      ansible.builtin.apt:
-        name:
-          - redis
-        state: present
-        update_cache: yes
+    - name: Ping remote host
+      ansible.builtin.ping:

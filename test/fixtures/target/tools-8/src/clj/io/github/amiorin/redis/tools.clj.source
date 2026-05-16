@@ -1,6 +1,7 @@
 (ns io.github.amiorin.redis.tools
   (:require
    [big-config :as bc]
+   [big-config.pluggable :as pluggable]
    [big-config.render :as render]
    [big-config.run :as run]
    [big-config.step-fns :as step-fns]
@@ -12,14 +13,47 @@
                (step-fns/->exit-step-fn ::workflow/end)
                (step-fns/->print-error-step-fn ::workflow/end)])
 
+(def delimiters {:tag-open \<
+                 :tag-close \>
+                 :filter-open \{
+                 :filter-close \}})
+
+(defn run-steps-with-plugin
+  [plugin-step step-fns opts]
+  (-> (update opts ::workflow/steps #(reduce (fn [steps step]
+                                               (into steps (if (= step :render)
+                                                             [step plugin-step]
+                                                             [step]))) [] (or % [])))
+      (->> (workflow/run-steps step-fns))))
+
+(def plugin-step ::render-tofu-backend)
+
+(defmethod pluggable/handle-step plugin-step
+  [_f _step step-fns {:keys [::workflow/name] :as opts}]
+  (let [prepare-keys [::workflow/name ::workflow/path-fn ::workflow/prefix ::workflow/object-fn ::workflow/object-prefix ::workflow/params]
+        plugin-opts (-> (workflow/prepare {::workflow/name name
+                                           ::render/templates [{:template (keyword->path ::tofu-backend)
+                                                                :overwrite true
+                                                                :provider-backend "local"
+                                                                :transform [["{{ provider-backend }}"
+                                                                             delimiters]]}]}
+                                          (select-keys opts prepare-keys))
+                        (->> (render/templates step-fns)))]
+    (-> opts
+        (merge (select-keys plugin-opts [::bc/exit ::bc/err]))
+        (update plugin-step (fnil conj []) plugin-opts))))
+
 (defn tofu
   [step-fns opts]
   (let [opts (workflow/prepare {::workflow/name ::tofu
                                 ::render/templates [{:template (keyword->path ::tofu)
                                                      :overwrite true
-                                                     :transform [["."]]}]}
+                                                     :provider-compute "hcloud"
+                                                     :compute-prevent-destroy true
+                                                     :transform [["{{ provider-compute }}"
+                                                                  delimiters]]}]}
                                opts)]
-    (workflow/run-steps step-fns opts)))
+    (run-steps-with-plugin plugin-step step-fns opts)))
 
 (defn tofu*
   [args & [opts]]
@@ -30,52 +64,42 @@
 
 (comment
   (debug tap-values
-    (tofu* "render tofu:init tofu:apply:-auto-approve" {::bc/env :repl
-                                                        ::run/shell-opts {:err *err*
-                                                                          :out *err*}}))
-  (debug tap-values
-    (tofu* "render tofu:destroy:-auto-approve" {::bc/env :repl
-                                                ::run/shell-opts {:err *err*
-                                                                  :out *err*}}))
+    (tofu* "render tofu:init tofu:plan" {::bc/env :repl
+                                          ::run/shell-opts {:err *err*
+                                                            :out *out*}}))
   (-> tap-values))
 
-(defn data-fn [{:keys [ip sudoer] :as data} _]
-  (let [sudoer (or sudoer "root")
-        hosts [(or ip "64.227.72.100")]]
-    (merge data {:sudoer sudoer
-                 :hosts hosts
-                 :users []})))
+(defn data-fn
+  [{:keys [ip user sudoer no-infra-compute-ip no-infra-compute-user no-infra-compute-sudoer] :as data} _]
+  (let [ip (or (not-empty ip)
+               (not-empty no-infra-compute-ip)
+               "192.168.0.1")
+        user (or (not-empty user)
+                 (not-empty no-infra-compute-user)
+                 (not-empty sudoer)
+                 (not-empty no-infra-compute-sudoer)
+                 "root")
+        sudoer (or (not-empty sudoer)
+                   (not-empty no-infra-compute-sudoer)
+                   user)]
+    (merge data {:ip ip
+                 :user user
+                 :sudoer sudoer
+                 :hosts [ip]})))
 
 (defn inventory
-  [{:keys [sudoer hosts users]}]
-  (let [users (-> (filter (complement :remove) users)
-                  (->> (map #(for [host hosts]
-                               (assoc % :host host))))
-                  flatten)
-        admins (-> [{:ansible_user sudoer}]
-                   (->> (map #(for [host hosts]
-                                (-> %
-                                    (merge {:host host
-                                            :name sudoer})))))
-                   flatten)
-        users-hosts (reduce #(let [{:keys [name uid host]} %2]
-                               (assoc %1 (format "%s@%s" name host) {:ansible_host host
-                                                                     :ansible_user name
-                                                                     :uid uid})) {} users)
-        admins-hosts (reduce #(let [{:keys [name host]} %2]
-                                (assoc %1 (format "root@%s" host) {:ansible_host host
-                                                                   :ansible_user name})) {} admins)
-        inventory {:all {:children {:admin {:hosts admins-hosts}
-                                    :users {:hosts users-hosts}}}}]
-    (json/generate-string inventory {:pretty true})))
+  [{:keys [ip user]}]
+  (json/generate-string {:all {:hosts {(format "%s@%s" user ip) {:ansible_host ip
+                                                                    :ansible_user user}}}}
+                        {:pretty true}))
 
-(defn render
+(defn render-file
   [target data]
   (case target
     :inventory (inventory data)))
 
 (comment
-  (render :inventory (data-fn {} {})))
+  (render-file :inventory (data-fn {} {})))
 
 (defn ansible
   [step-fns opts]
@@ -85,7 +109,7 @@
                                                      :data-fn data-fn
                                                      :transform [["."
                                                                   :raw]
-                                                                 [render
+                                                                 [render-file
                                                                   {:inventory "inventory.json"}
                                                                   :raw]]}]}
                                opts)]
@@ -102,7 +126,7 @@
   (debug tap-values
     (ansible* "render ansible-playbook:main.yml" {::bc/env :repl
                                                   ::run/shell-opts {:err *err*
-                                                                    :out *err*}}))
+                                                                    :out *out*}}))
   (-> tap-values))
 
 (defn ansible-local
@@ -110,7 +134,8 @@
   (let [opts (workflow/prepare {::workflow/name ::ansible-local
                                 ::render/templates [{:template (keyword->path ::ansible-local)
                                                      :overwrite true
-                                                     :transform [["."]]}]}
+                                                     :transform [["."
+                                                                  :raw]]}]}
                                opts)]
     (workflow/run-steps step-fns opts)))
 
@@ -124,8 +149,6 @@
 (comment
   (debug tap-values
     (ansible-local* "render ansible-playbook:main.yml" {::bc/env :repl
-                                                        ::workflow/params {:ip "159.223.11.241"}
                                                         ::run/shell-opts {:err *err*
                                                                           :out *out*}}))
   (-> tap-values))
-

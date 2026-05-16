@@ -1,6 +1,6 @@
 {:paths   ["src/clj" "src/resources"]
  :deps    {org.clojure/clojure          {:mvn/version "1.12.4"}
-           io.github.amiorin/big-config {:git/sha "e067cdb1713e7418c87f45bbe1e25418dfb7d928"}
+           io.github.amiorin/big-config {:git/sha "01e235a430e519ef9b41fa68715ebb29155c6bc1"}
            cheshire/cheshire            {:mvn/version "6.1.0"}
            babashka/process             {:mvn/version "0.6.25"}
            com.rpl/specter              {:mvn/version "1.1.6"}}

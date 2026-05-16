@@ -1,0 +1,40 @@
+(ns io.github.amiorin.redis.params
+  (:require
+   [babashka.process :as p]
+   [big-config.render :as render]
+   [big-config.utils :refer [debug]]
+   [big-config.workflow :as workflow]
+   [cheshire.core :as json]
+   [com.rpl.specter :as s]
+   [io.github.amiorin.redis.options :as options]))
+
+(defn tofu-params
+  [opts]
+  (let [dir (workflow/path opts :io.github.amiorin.redis.tools/tofu)]
+    (merge-with merge opts {::workflow/params (try
+                                                (or (-> (p/shell {:dir dir
+                                                                  :out :string
+                                                                  :err :string}
+                                                                 "tofu output --json")
+                                                        :out
+                                                        (json/parse-string keyword)
+                                                        (->> (s/select-one [:params :value])))
+                                                    {:ip "192.168.0.1"})
+                                                (catch Exception _
+                                                  {:ip "192.168.0.1"}))})))
+
+(def opts-fn (comp tofu-params workflow/read-bc-pars))
+
+(defn redis-opts
+  [opts]
+  (-> opts
+      (workflow/new-prefix :io.github.amiorin.redis.package/start-create-or-delete)
+      opts-fn))
+
+(comment
+  (debug tap-values
+    (-> options/bb
+        (workflow/new-prefix :io.github.amiorin.redis.package/start-create-or-delete)
+        opts-fn))
+  (redis-opts options/bb)
+  (-> tap-values))

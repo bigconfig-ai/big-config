@@ -1,22 +1,72 @@
 {:deps {<{ deps }> {:local/root "."}}
  :tasks
- {:requires ([<{ namespace }>.package :as package]
-             [<{ namespace }>.tools :as tools])
+ {:requires ([<{ namespace }>.describe :as describe]
+             [<{ namespace }>.options :as options]
+             [<{ namespace }>.package :as package]
+             [<{ namespace }>.tools :as tools]
+             [<{ namespace }>.validation :as validation])
   help {:doc "the workflow help"
         :override-builtin true
-        :task (println "Usage: bb <step|cmd>+ -- [raw-command]
+        :task (println "Usage: bb <task> [args...]
+
+Tasks:
+  <{ repository }>      Provision or tear down compute for the active profile.
+            Usage:
+              bb <{ repository }> create          Run the create pipeline:
+                                                  tofu -> ansible-local -> ansible
+              bb <{ repository }> delete          Destroy the Tofu compute stage.
+              bb <{ repository }> delete create   Clean-slate redeploy.
+            Notes:
+              * Compute resources render with prevent_destroy = true by default.
+                Override with:
+                  BC_PAR_COMPUTE_PREVENT_DESTROY=false bb <{ repository }> delete
+              * The active profile is selected by (def bb ...) in options.clj.
+
+  validate  Pre-flight checks for the active profile. Verifies:
+              * profile params
+              * required CLIs are installed
+              * cloud credentials are present
+              * :compute-pubkey is loaded in ssh-agent for cloud compute profiles
+            Usage:
+              bb validate
+
+  describe  Show selected providers, compute IP, and SSH reachability for the
+            active profile.
+            Usage:
+              bb describe
+
+  tofu      Render/run the compute OpenTofu tool workflow.
+            Usage:
+              bb tofu render tofu:init tofu:apply:-auto-approve
+
+  ansible-local
+            Render/run the local ping playbook.
+            Usage:
+              bb ansible-local render -- ansible-playbook main.yml
+
+  ansible   Render/run the remote ping playbook.
+            Usage:
+              bb ansible render -- ansible-playbook main.yml
+
+  tidy      Tidy Clojure files.
+            Usage:
+              bb tidy
 
 See:
-* https://bigconfig.it/packages/intro/
-* https://bigconfig.it/api/workflow/")}
+* https://www.bigconfig.ai/manual")}
   tidy {:doc "tidy clojure files"
         :task (do (shell "clojure-lsp clean-ns")
                   (shell "clojure-lsp format"))}
-  tofu {:doc "bb tofu render tofu:init lock tofu:apply:-auto-approve"
-        :task (tools/tofu* *command-line-args* (package/<{ repository }>-opts {}))}
+  validate {:doc "validate active profile params, tools, credentials, and ssh-agent"
+            :task (validation/validate* *command-line-args* options/bb)}
+  describe {:doc "describe selected providers, compute IP, and SSH reachability"
+            :override-builtin true
+            :task (describe/describe* *command-line-args* options/bb)}
+  tofu {:doc "bb tofu render tofu:init tofu:apply:-auto-approve"
+        :task (tools/tofu* *command-line-args* (package/<{ repository }>-opts options/bb))}
+  ansible-local {:doc "bb ansible-local render -- ansible-playbook main.yml"
+                 :task (tools/ansible-local* *command-line-args* (package/<{ repository }>-opts options/bb))}
   ansible {:doc "bb ansible render -- ansible-playbook main.yml"
-           :task (tools/ansible* *command-line-args* (package/<{ repository }>-opts {}))}
-  ansible-local {:doc "bb ansible render -- ansible-playbook main.yml"
-                 :task (tools/ansible-local* *command-line-args* (package/<{ repository }>-opts {}))}
-  <{ repository }> {:doc "bb <{ repository }> create"
-                    :task (package/<{ repository }>* *command-line-args*)}}}
+           :task (tools/ansible* *command-line-args* (package/<{ repository }>-opts options/bb))}
+  <{ repository }> {:doc "bb <{ repository }> create | bb <{ repository }> delete"
+                    :task (package/<{ repository }>* *command-line-args* options/bb)}}}

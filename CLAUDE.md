@@ -108,8 +108,8 @@ To register a step in the DSL (so it's not treated as a raw shell command):
 ### CLI DSL (Babashka)
 
 ```shell
-bb render lock tofu:init tofu:apply -- tofu apply -auto-approve
-#  │      │    │                       └── raw shell command
+bb render lock tofu:init tofu:plan -- tofu apply -auto-approve
+#  │      │    │                      └── raw shell command
 #  step   step colon-syntax (tofu init)
 ```
 
@@ -121,7 +121,7 @@ Colon syntax: `tool:subcommand` maps to `tool subcommand` in the shell.
 Prefix any parameter with `BC_PAR_` to override it in CI:
 
 ```shell
-export BC_PAR_CLOUDFLARE_ZONE_ID="your-zone-id"
+export BC_PAR_PROVIDER_BACKEND="local"
 ```
 
 ### `->workflow` Constructor
@@ -266,7 +266,7 @@ BigConfig ships templates for scaffolding new projects:
 
 | Template | Description |
 |---|---|
-| `package` | Full BigConfig project scaffold |
+| `package` | Compute-only BigConfig project scaffold (OpenTofu compute + tofu-backend + ping-only Ansible + validate/describe tasks) |
 | `devenv` | Nix dev environment files for Clojure/Babashka |
 | `action` | GitHub Actions CI workflow for Clojure |
 | `multi` | (deprecated) Multi-module layout |

@@ -4,6 +4,16 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>BigConfig — Manual</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-4VKP1WY4QJ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "G-4VKP1WY4QJ");
+</script>
 <link rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -42,7 +52,13 @@
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 13px;
   }
-  code { background: var(--bg-code); padding: 1px 5px; border-radius: 4px; }
+  code {
+    background: var(--bg-code);
+    padding: 1px 5px;
+    border-radius: 4px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
   pre { margin: 14px 0; }
   pre code {
     display: block;
@@ -51,6 +67,9 @@
     border-radius: 6px;
     background: var(--bg-soft);
     overflow-x: auto;
+    overflow-wrap: normal;
+    white-space: pre;
+    word-break: normal;
     line-height: 1.5;
   }
   kbd {
@@ -79,12 +98,18 @@
     padding: 24px 18px;
   }
   .sidebar .brand {
+    display: block;
+    color: var(--text);
     font-weight: 700;
     font-size: 17px;
     letter-spacing: -0.01em;
     padding: 0 6px 10px;
     border-bottom: 1px solid var(--border-soft);
     margin-bottom: 10px;
+    text-decoration: none;
+  }
+  .sidebar .brand:hover {
+    text-decoration: none;
   }
   .sidebar .brand small {
     display: block;
@@ -125,6 +150,8 @@
   main {
     padding: 40px 56px 80px;
     max-width: calc(var(--maxw-content) + 112px);
+    min-width: 0;
+    width: 100%;
   }
   main h1 {
     font-size: 32px;
@@ -158,7 +185,11 @@
 
   table {
     border-collapse: collapse;
+    display: block;
     width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     margin: 12px 0 18px;
     font-size: 13.5px;
   }
@@ -242,6 +273,12 @@
       border-bottom: 1px solid var(--border-soft);
     }
     main { padding: 24px 20px 60px; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 520px) {
+    main { padding: 22px 16px 56px; }
+    aside.sidebar { padding: 20px 14px; }
   }
 </style>
 </head>
@@ -249,10 +286,10 @@
 <div class="layout">
 
 <aside class="sidebar">
-  <div class="brand">
-    BigConfig
+  <a class="brand" href="/">
+    ← BigConfig
     <small>Workflow &amp; template engine for IaC</small>
-  </div>
+  </a>
   <nav id="toc">
     <div class="group-title">Start</div>
     <ul>
@@ -345,14 +382,20 @@
 <h2>Installation <a href="#install" class="anchor">#</a></h2>
 <p>BigConfig is typically used as a Clojure tool or via Babashka.</p>
 <pre><code class="language-bash"># Install BigConfig as a Clojure tool
-clojure -Ttools install-latest :lib io.github.amiorin/big-config :as big-config
+clojure -Ttools install-latest :lib io.github.bigconfig-ai/big-config :as big-config
 
 # Print help for all available templates
 clojure -A:deps -Tbig-config help/doc
 
-# Scaffold a new project using the `package` template
+# Scaffold a compute-only project using the `package` template
 clojure -Tbig-config package \
-  :owner acme :repository infra :ssh-key 123456 :target-dir my-infra</code></pre>
+  :owner acme :repository infra :target-dir my-infra</code></pre>
+<p>
+  The <code>package</code> template generates OpenTofu compute workflows for
+  <code>hcloud</code>, <code>oci</code>, <code>digitalocean</code>, and <code>no-infra</code>,
+  optional <code>tofu-backend</code> state configuration, ping-only Ansible workflows,
+  and <code>bb validate</code> / <code>bb describe</code> tasks.
+</p>
 <p>The published artifact name is <code>motain/big-login</code> (see <code>build.clj</code>). Versions follow <code>0.3.&lt;git-commit-count&gt;</code>.</p>
 </section>
 
@@ -452,8 +495,8 @@ clojure -Tbig-config package \
 <section id="cli-dsl">
 <h2>CLI DSL <a href="#cli-dsl" class="anchor">#</a></h2>
 <p>BigConfig provides a concise DSL for running workflows from a shell via Babashka:</p>
-<pre><code class="language-bash">bb render lock tofu:init tofu:apply -- tofu apply -auto-approve
-#  │      │    │                       └── raw shell command
+<pre><code class="language-bash">bb render lock tofu:init tofu:plan -- tofu apply -auto-approve
+#  │      │    │                      └── raw shell command
 #  step   step colon-syntax (tofu init)</code></pre>
 <ul>
   <li><strong>Steps</strong> (e.g. <code>render</code>, <code>lock</code>) are predefined workflow names.</li>
@@ -487,9 +530,9 @@ bb tofu:apply:-auto-approve tofu:destroy:-auto-approve
 ;; => {:big-config.workflow/steps    [:render]
 ;;     :big-config.run/cmds          []}
 
-(workflow/parse-args ["render" "lock" "tofu:init" "tofu:apply" "--" "tofu" "apply" "-auto-approve"])
+(workflow/parse-args ["render" "lock" "tofu:init" "tofu:plan" "--" "tofu" "apply" "-auto-approve"])
 ;; => {:big-config.workflow/steps    [:render :lock :exec]
-;;     :big-config.run/cmds          ["tofu init" "tofu apply" "tofu apply -auto-approve"]}</code></pre>
+;;     :big-config.run/cmds          ["tofu init" "tofu plan" "tofu apply -auto-approve"]}</code></pre>
 <p>
   The set of recognized step keywords lives in a dynamic var
   <code>workflow/*parse-args-steps*</code>. Default value:
@@ -661,7 +704,7 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
 <pre><code class="language-clojure">{:deps {group/artifact {:local/root "."}}
  :tasks
  {:requires ([wf :as wf])
-  tofu     {:doc  "bb tofu render tofu:init -- tofu apply -auto-approve"
+  tofu     {:doc  "bb tofu render tofu:init tofu:apply:-auto-approve"
             :task (wf/tofu* *command-line-args*)}
   ansible  {:doc  "bb ansible render -- ansible-playbook main.yml"
             :task (wf/ansible* *command-line-args*)}
@@ -692,15 +735,15 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
   (workflow/->workflow*
    {:first-step ::start-create-or-delete
     :last-step  ::end-create-or-delete
-    :pipeline   [::tool/tofu          ["render tofu:init -- tofu apply -auto-approve"]
-                 ::tool/ansible       ["render -- ansible-playbook main.yml" opts-fn]
-                 ::tool/ansible-local ["render -- ansible-playbook main.yml" opts-fn]]}))
+    :pipeline   [::tool/tofu          ["render tofu:init tofu:apply:-auto-approve"]
+                 ::tool/ansible       ["render ansible-playbook:main.yml" opts-fn]
+                 ::tool/ansible-local ["render ansible-playbook:main.yml" opts-fn]]}))
 
 (def resource-delete
   (workflow/->workflow*
    {:first-step ::start-create-or-delete
     :last-step  ::end-create-or-delete
-    :pipeline   [::tool/tofu ["render -- tofu destroy -auto-approve"]]}))
+    :pipeline   [::tool/tofu ["render tofu:destroy:-auto-approve"]]}))
 
 (defn resource
   [step-fns opts]
@@ -755,7 +798,7 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
 <pre><code class="language-clojure">(workflow/run-steps
   step-fns
   {::workflow/steps      [:render :lock :exec :unlock-any]
-   ::run/cmds            ["tofu init" "tofu apply" "tofu apply -auto-approve"]
+   ::run/cmds            ["tofu init" "tofu plan" "tofu apply -auto-approve"]
    ::workflow/create-fn  my-create-fn
    ::workflow/delete-fn  my-delete-fn})</code></pre>
 </section>
@@ -1098,7 +1141,7 @@ without repeating path logic.</p>
 <table>
   <thead><tr><th>Template</th><th>Purpose</th></tr></thead>
   <tbody>
-    <tr><td><code>package</code></td><td>Full BigConfig project scaffold (Tofu + Ansible + tooling).</td></tr>
+    <tr><td><code>package</code></td><td>Compute-only BigConfig project scaffold (OpenTofu compute + tofu-backend + ping-only Ansible + tooling).</td></tr>
     <tr><td><code>devenv</code></td><td>Nix <code>devenv</code> files for Clojure/Babashka development.</td></tr>
     <tr><td><code>action</code></td><td>GitHub Actions CI workflow for Clojure projects.</td></tr>
   </tbody>
@@ -1118,8 +1161,15 @@ without repeating path logic.</p>
 
 <h3>Example: <code>package</code></h3>
 <pre><code class="language-bash">clojure -Tbig-config package \
-  :owner amiorin :repository joe :ssh-key 812184 \
+  :owner amiorin :repository joe \
   :target-dir ../../joe</code></pre>
+<p>
+  The generated project contains a compute-only lifecycle:
+  <code>tofu</code> provisions compute, <code>ansible-local</code> pings localhost,
+  and <code>ansible</code> pings the remote host. The generated <code>bb help</code>
+  documents <code>bb joe create</code>, <code>bb joe delete</code>, <code>bb validate</code>,
+  <code>bb describe</code>, and individual tool workflows.
+</p>
 <p>
   Templates use Selmer syntax. File names and contents are interpolated via the
   <code>render</code> step. Custom delimiters are used where the default
@@ -1135,8 +1185,8 @@ without repeating path logic.</p>
   underscores and dots become dashes, and the result is converted to a keyword
   inside <code>::workflow/params</code>.
 </p>
-<pre><code class="language-bash">export BC_PAR_CLOUDFLARE_ZONE_ID="your-zone-id"
-# becomes {:cloudflare-zone-id "your-zone-id"} in ::workflow/params</code></pre>
+<pre><code class="language-bash">export BC_PAR_PROVIDER_BACKEND="local"
+# becomes {:provider-backend "local"} in ::workflow/params</code></pre>
 <p>This is applied by <code>workflow/read-bc-pars</code>, which merges the env-derived params with the existing ones.</p>
 </section>
 
@@ -1249,7 +1299,7 @@ bb    test-bb-task                                 # BigConfig system tests</cod
 </table>
 
 <h3>Babashka tasks (<code>bb.edn</code>)</h3>
-<pre><code class="language-clojure">{:deps {amiorin/big-config {:local/root "."}}
+<pre><code class="language-clojure">{:deps {bigconfig-ai/big-config {:local/root "."}}
  :tasks
  {build         {:doc  "setup the dev environment"
                  :task (shell {:dir ".big-config"} "bb build render devenv:build")}
