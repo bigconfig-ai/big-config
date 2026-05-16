@@ -82,6 +82,25 @@ Workflows thread an `opts` map through a sequence of steps. Every step must retu
 - `comp-workflow` — sequences multiple `tool-workflows` into a lifecycle (`create`, `delete`)
 - `system-workflow` — manages start/stop of background system components
 
+#### Composition layer (subworkflow isolation)
+
+`run-steps` and `workflow/->workflow*` are a *composition layer* — a "workflow
+of workflows" — **not** workflow steps. The pure-step / single-threaded-`opts`
+contract holds *within one workflow*. Across the composition layer the
+invariant is instead **subworkflow isolation**:
+
+- Each subworkflow (`::create`/`::delete`, or each `:pipeline` step) runs on a
+  purpose-built `opts` — `create-opts`/`delete-opts`, or
+  `(merge step-args globals-opts <step>-opts)` — seeded from the shared globals,
+  **never** the parent's running `opts`.
+- Each subworkflow's terminal `opts` is accumulated under its step key (a
+  *vector* in `run-steps`, so repeated `create`/`delete` runs are kept
+  side-by-side as history); only `::bc/exit` / `::bc/err` propagate upward to
+  drive the parent's branching and short-circuit.
+
+The closed-over atoms in these two functions *implement* this isolation; they
+are deliberate, not a purity leak (see *What to Avoid*).
+
 ### Pluggable Steps (Multimethods)
 
 Override or add steps via `big-config.pluggable/handle-step`:
@@ -281,6 +300,7 @@ Templates use Selmer syntax. File names and content are interpolated via the `re
 - **Do not** use `build` step as a synonym for `render` — `render` is the current name.
 - **Do not** modify `.github/workflows/ci.yml` to skip tests; the tag job depends on test success.
 - **Do not** create feature branches — commit straight to `main` (see [Git & Commits](#git--commits)).
+- **Do not** "de-atomize" `run-steps` / `->workflow*` in `big-config.workflow`. The closed-over atoms are an intentional **accumulator + subworkflow-isolation barrier** of the composition layer, not a purity leak. The pure-step / single-threaded-`opts` contract is scoped to the steps *within one workflow*, **not** across the composition layer. Folding the step queue / results into one threaded `opts` breaks subworkflow isolation and discards per-invocation result history — it is **not** behavior-preserving. See the `run-steps` / `->workflow*` docstrings and [Composition layer](#composition-layer-subworkflow-isolation).
 
 ---
 

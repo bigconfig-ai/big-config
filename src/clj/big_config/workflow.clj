@@ -347,8 +347,32 @@
        (select-keys opts)))
 
 (defn run-steps
-  "A dynamic workflow that takes a list of steps, a create function, and a
-  delete function. See the namespace `big-config.workflow`"
+  "A *composition layer* — a dynamic \"workflow of workflows\", not a workflow
+  step. Takes a list of `::steps` plus `::create-fn` / `::delete-fn`.
+
+  Most steps (`::lock`, `::git-check`, `::render`, `::exec`, `::git-push`,
+  `::unlock-any`) are ordinary in-workflow steps and obey the usual pure
+  `opts -> opts` threading contract. `::create` and `::delete` are *entire
+  subworkflows*, resolved via `::create-fn` / `::delete-fn`.
+
+  Architectural decision — subworkflow isolation (by design):
+
+  * The pure-step / single-threaded-`opts` contract is scoped to the steps
+    *within one workflow*. At this composition layer the invariant is instead
+    that each subworkflow runs on an isolated, purpose-built `opts`:
+    `::create` / `::delete` receive `create-opts` / `delete-opts`
+    (caller-supplied `::create-opts` / `::delete-opts` merged with the shared
+    globals), never the parent's running `opts`.
+  * Each subworkflow's terminal `opts` is accumulated under its step key as a
+    vector, so repeated `::create` / `::delete` invocations are kept
+    side-by-side as history; only `::bc/exit` / `::bc/err` propagate upward to
+    drive the parent's branching and short-circuit.
+
+  The closed-over atom is therefore the deliberate accumulator + isolation
+  barrier that implements these semantics, not a purity leak. Folding the step
+  queue and results into one threaded `opts` would break subworkflow isolation
+  and discard per-invocation result history — it is not a behavior-preserving
+  change. See the namespace `big-config.workflow`."
   {:arglists '([step-fns opts])}
   [step-fns {:keys [::steps ::create-opts ::delete-opts] :as opts}]
   (let [globals-opts (select-globals opts)
@@ -508,7 +532,24 @@
   (new-prefix {} :io.github.amiorin.rama.package/start-create-or-delete))
 
 (defn ->workflow*
-  "Creates a workflow of workflows. See the namespace `big-config.workflow`."
+  "Creates a *composition layer* — a \"workflow of workflows\" — from a
+  `:pipeline` of subworkflow steps. Not a workflow step itself.
+
+  Architectural decision — subworkflow isolation (by design):
+
+  * The pure-step / single-threaded-`opts` contract is scoped to the steps
+    *within one workflow*. At this composition layer the invariant is instead
+    that every pipeline step runs on an isolated, purpose-built `opts`, built
+    per step as `(merge step-args globals-opts <step>-opts)` — never the
+    parent's running `opts`.
+  * Each subworkflow's terminal `opts` is stored under its step key; only
+    `::bc/exit` / `::bc/err` propagate upward to drive branching and
+    short-circuit.
+
+  The closed-over atom is the deliberate accumulator + isolation barrier that
+  implements these semantics, not a purity leak. Folding everything into one
+  threaded `opts` would break subworkflow isolation and is not a
+  behavior-preserving change. See the namespace `big-config.workflow`."
   {:arglists '([wf*-opts])}
   [{:keys [first-step last-step pipeline]}]
   (when-not (sequential? pipeline)
