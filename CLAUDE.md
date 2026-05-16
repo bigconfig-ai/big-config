@@ -175,6 +175,15 @@ Key REPL helpers in `env/dev/clj/`:
 
 Use `(comment ...)` blocks for REPL exploration (they appear throughout the source).
 
+### Git & Commits
+
+- **Commit directly to `main`.** This repository uses a trunk-based workflow:
+  `main` is the only branch.
+- **Do not create feature branches.** Never run `git checkout -b` / `git switch
+  -c` or branch off `main`, even when the assistant's default behavior would be
+  to branch before committing. Stay on `main` and commit there.
+- Still commit (and push) only when explicitly asked.
+
 ---
 
 ## CI/CD
@@ -271,6 +280,7 @@ Templates use Selmer syntax. File names and content are interpolated via the `re
 - **Do not** pass `step-fns` inside the `->workflow` map — this argument was removed; pass it as the first argument when invoking the workflow function.
 - **Do not** use `build` step as a synonym for `render` — `render` is the current name.
 - **Do not** modify `.github/workflows/ci.yml` to skip tests; the tag job depends on test success.
+- **Do not** create feature branches — commit straight to `main` (see [Git & Commits](#git--commits)).
 
 ---
 
