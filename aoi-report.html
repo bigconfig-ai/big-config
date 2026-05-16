@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BigConfig — Area of Improvement (AoI) Report</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161a21; --panel-2:#1c212b; --ink:#e7e9ee; --muted:#9aa3b2;
+    --line:#2a313d; --accent:#6ea8fe; --good:#48c78e; --warn:#f5b942; --bad:#f06a6a;
+    --crit:#ff4d4f; --code-bg:#0c0e13;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6}
+  a{color:var(--accent);text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
+  header.top{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#141821,#0f1115);padding:48px 0 32px;margin-bottom:8px}
+  .eyebrow{letter-spacing:.16em;text-transform:uppercase;font-size:12px;color:var(--accent);font-weight:700}
+  h1{font-size:34px;margin:10px 0 6px;line-height:1.2}
+  h2{font-size:24px;margin:56px 0 6px;padding-top:18px;border-top:1px solid var(--line)}
+  h3{font-size:18px;margin:26px 0 4px}
+  p.lede{color:var(--muted);font-size:16px;max-width:78ch}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 28px;margin-top:22px;font-size:13px;color:var(--muted)}
+  .meta b{color:var(--ink);font-weight:600}
+  .pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  .pill.crit{background:rgba(255,77,79,.15);color:#ff8b8c;border:1px solid rgba(255,77,79,.4)}
+  .pill.high{background:rgba(240,106,106,.13);color:#ff9a9a;border:1px solid rgba(240,106,106,.35)}
+  .pill.med{background:rgba(245,185,66,.13);color:#ffd27a;border:1px solid rgba(245,185,66,.35)}
+  .pill.low{background:rgba(110,168,254,.12);color:#a9c8ff;border:1px solid rgba(110,168,254,.35)}
+  .grade{font-weight:800}
+  .grade.A{color:var(--good)} .grade.B{color:#7fd6ff} .grade.C{color:var(--warn)} .grade.D{color:var(--bad)}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+  tr:last-child td{border-bottom:none}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin:18px 0}
+  .finding{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--bad);border-radius:12px;padding:22px 24px;margin:22px 0}
+  .finding.crit{border-left-color:var(--crit)}
+  .finding.high{border-left-color:var(--bad)}
+  .finding.med{border-left-color:var(--warn)}
+  .finding.low{border-left-color:var(--accent)}
+  .finding .head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:4px}
+  .finding .head h3{margin:0;font-size:20px}
+  .rank{font-family:var(--mono);font-size:13px;color:var(--muted);font-weight:700}
+  .kv{display:grid;grid-template-columns:140px 1fr;gap:6px 16px;font-size:14px;margin:14px 0 4px}
+  .kv div:nth-child(odd){color:var(--muted);font-weight:600}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  .ba .col h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+  .ba .before h4{color:#ff9a9a} .ba .after h4{color:#7ee0b4}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;margin:0;font-family:var(--mono);font-size:12.5px;line-height:1.55;color:#d6dbe6}
+  code{font-family:var(--mono);font-size:.92em;background:var(--panel-2);padding:1px 6px;border-radius:5px;color:#cdd6f4}
+  pre code{background:none;padding:0;color:inherit}
+  .cmt{color:#6b7488}
+  .impact{background:rgba(72,200,142,.07);border:1px solid rgba(72,200,142,.28);border-radius:10px;padding:12px 16px;margin-top:14px;font-size:14px}
+  .impact b{color:#7ee0b4}
+  ul{margin:8px 0 8px 2px;padding-left:20px} li{margin:4px 0}
+  .muted{color:var(--muted)}
+  .note{font-size:13px;color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:12px 16px;margin:14px 0}
+  footer{margin-top:60px;border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13px}
+  .toc{columns:2;column-gap:40px;font-size:14px}
+  .toc a{display:block;padding:3px 0}
+  @media (max-width:760px){.ba{grid-template-columns:1fr}.toc{columns:1}.kv{grid-template-columns:1fr}}
+  @media print{
+    :root{--bg:#fff;--panel:#fff;--panel-2:#f3f4f6;--ink:#111;--muted:#555;--line:#ccc;--code-bg:#f6f7f9}
+    body{color:#111}.finding,.card{break-inside:avoid}.ba{grid-template-columns:1fr 1fr}
+    header.top{background:none}a{color:#1a4fd6}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="eyebrow">Principal Engineer Review</div>
+    <h1>BigConfig — Area of Improvement Report</h1>
+    <p class="lede">An architectural and code-quality assessment of the BigConfig Clojure/Babashka
+    workflow &amp; template engine, with prioritized, actionable refactors for the highest-impact issues.</p>
+    <div class="meta">
+      <span><b>Repository:</b> big-config (main)</span>
+      <span><b>Date:</b> 2026-05-16</span>
+      <span><b>Scope:</b> Entire repo — src, tests, templates, build, CI</span>
+      <span><b>Method:</b> Static review (no tooling executed)</span>
+      <span><b>Surface:</b> ~2,940 LOC src / 21 namespaces / 13 test files</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h2 id="summary">Executive Summary</h2>
+  <div class="card">
+    <p>BigConfig is a well-conceived, data-oriented workflow engine. The core abstractions
+    (<code>-&gt;workflow</code>, <code>-&gt;step-fn</code>, pluggable multimethods, an <code>opts</code> map
+    threaded through pure steps) are idiomatic and genuinely composable. The Redis event-sourcing store
+    correctly implements optimistic concurrency, and the pure helpers (<code>parse-args</code>,
+    <code>prepare</code>, <code>merge-params</code>) are clean and well-tested.</p>
+    <p>The problems are concentrated, not pervasive. Three substantive issues stand out: a
+    <b>hard-wired shell boundary</b> that simultaneously creates injection fragility and leaves ~50%
+    of namespaces (including the security-sensitive lock) untestable; <b>hidden mutable state</b> that
+    undermines the otherwise-functional engine; and accumulated <b>duplication / dead code</b> from an
+    unfinished deprecation. A fourth item — the directory-isolation key — is a <b>documentation
+    defect, not a bug</b>: the deterministic paths are intentional and <i>required</i> for
+    local-backend state continuity and create/delete pairing, but the docstring mis-sells that
+    determinism as a concurrency guard. None require a rewrite — each has a contained, mechanical fix.</p>
+  </div>
+
+  <h3>Scorecard</h3>
+  <table>
+    <thead><tr><th>Dimension</th><th>Grade</th><th>Assessment</th></tr></thead>
+    <tbody>
+      <tr><td>Architecture &amp; Design</td><td><span class="grade B">B−</span></td>
+        <td>Clean core primitives and separation of concerns, undermined by hidden atoms in the
+        engine, reflective multimethod dispatch, and a deprecated parallel CLI stack still fully wired.</td></tr>
+      <tr><td>Performance &amp; Scalability</td><td><span class="grade B">B</span></td>
+        <td>No hot data paths or N+1 patterns; Redis store uses sound optimistic locking. Concurrency
+        is handled explicitly by the <code>lock</code> step rather than by path uniqueness — an
+        intentional design (see Finding&nbsp;1).</td></tr>
+      <tr><td>Code Quality &amp; Maintainability</td><td><span class="grade B">B−</span></td>
+        <td>Good idioms and naming overall; a few functions carry very high cognitive complexity, plus
+        verbatim duplication and a 260-line namespace docstring.</td></tr>
+      <tr><td>Security &amp; Robustness</td><td><span class="grade C">C+</span></td>
+        <td>No obvious RCE, but commands are string-interpolated, remote git-tag content is parsed with
+        <code>edn/read-string</code>, and temp directories leak. Fragile trust boundaries.</td></tr>
+      <tr><td>Testability</td><td><span class="grade C">C</span></td>
+        <td>Pure helpers are well covered, but shelling-out has no seam, so 11/21 namespaces — including
+        <code>big-config.lock</code> — have zero unit tests; integration relies on real git + subprocess.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Top Findings (by priority)</h3>
+  <div class="toc card">
+    <a href="#f1">1 · <span class="pill low">Low</span> Isolation-key docstring oversells determinism as a concurrency guard</a>
+    <a href="#f2">2 · <span class="pill high">High</span> Hard-wired shell boundary: untestable + injection-fragile</a>
+    <a href="#f3">3 · <span class="pill high">High</span> Hidden mutable atoms drive the &ldquo;functional&rdquo; engine</a>
+    <a href="#f4">4 · <span class="pill med">Medium</span> Duplication &amp; dead code from unfinished deprecation</a>
+  </div>
+
+  <!-- ================= FINDING 1 ================= -->
+  <h2 id="findings">Detailed Findings</h2>
+
+  <div class="finding low" id="f1">
+    <div class="head">
+      <span class="rank">#1</span><span class="pill low">Low</span>
+      <h3>Isolation-key docstring oversells deterministic paths as a concurrency guard</h3>
+    </div>
+    <div class="kv">
+      <div>Location</div><div><code>workflow.clj:116–119</code> (namespace docstring); behavior at <code>workflow.clj:477–496</code> (<code>new-prefix</code>)</div>
+      <div>Dimensions</div><div>Documentation · Correctness of intent (not of behavior)</div>
+      <div>Status</div><div>Behavior is <b>intentional and correct</b>; only the docstring needed narrowing — <b>fixed</b> in <code>workflow.clj</code></div>
+    </div>
+    <p><b>Clarification (revised after maintainer input).</b> <code>new-prefix</code> derives the
+    workspace discriminator deterministically from <code>:first-step</code>. This is a deliberate
+    design requirement, not a defect:</p>
+    <ul>
+      <li><b>Local OpenTofu backend:</b> <code>terraform.tfstate</code> lives in the rendered
+      directory. A unique-per-run path would make every run start from empty state and never see
+      previously-created resources — stable paths are mandatory here.</li>
+      <li><b>Dev iteration:</b> a workflow always resolves to the same <code>.dist/…</code> path, so
+      generated OpenTofu/Ansible can be inspected and re-run in place.</li>
+      <li><b>create/delete pairing:</b> the two workflows intentionally share <code>:first-step</code>
+      so <code>delete</code> resolves to the same state directory <code>create</code> used — which
+      works <i>because</i> the hash is deterministic.</li>
+    </ul>
+    <p>The only defect was the <b>docstring</b> at <code>workflow.clj:116–119</code>, which described
+    the hash as "avoiding collisions when the same workflow is run concurrently." The hash is a
+    <b>workspace selector, not a concurrency primitive</b>. Mutual exclusion is already a separate,
+    explicit layer in the architecture — the <code>lock</code> step (<code>big-config.lock</code>,
+    git-tag pessimistic lock). Concurrent runs of one workflow against one prefix are an explicit
+    non-goal by design.</p>
+    <div class="ba">
+      <div class="col before"><h4>Before — docstring (workflow.clj:116–119)</h4>
+<pre><code>&gt; Note: -&gt;workflow* calls new-prefix on the globals
+&gt; derived from opts, which stamps a UNIQUE hash into
+&gt; both ::prefix and ::object-prefix. Each invocation
+&gt; of the composite workflow therefore writes to an
+&gt; isolated directory and object path, AVOIDING
+&gt; COLLISIONS when the same workflow is run
+&gt; concurrently.</code></pre></div>
+      <div class="col after"><h4>After — states intent + explicit non-goal</h4>
+<pre><code>&gt; Note: new-prefix derives a DETERMINISTIC
+&gt; discriminator from :first-step. Intentional: a
+&gt; workflow always resolves to the SAME dir/object so
+&gt; (a) generated code can be iterated on, (b) a local
+&gt; OpenTofu backend keeps terraform.tfstate across
+&gt; runs, (c) paired create/delete (shared :first-step)
+&gt; share state.
+&gt;
+&gt; Concurrency is an EXPLICIT NON-GOAL here; mutual
+&gt; exclusion is the job of the lock step
+&gt; (big-config.lock). For isolated parallel runs,
+&gt; override ::prefix / ::object-prefix explicitly.</code></pre></div>
+    </div>
+    <div class="impact"><b>Impact — Documentation / Correctness of intent:</b> No behavior change.
+    Removes the only thing that made an intentional, <i>required</i> design read as a race, and aligns
+    the docstring with the actual concurrency layer (<code>lock</code>). Reclassified from
+    <span class="pill crit">Critical</span> to <span class="pill low">Low</span> after maintainer
+    confirmation that deterministic paths are required for local-backend state continuity.</div>
+  </div>
+
+  <!-- ================= FINDING 2 ================= -->
+  <div class="finding high" id="f2">
+    <div class="head">
+      <span class="rank">#2</span><span class="pill high">High</span>
+      <h3>Shelling-out is hard-wired with string-built commands: no test seam &amp; injection-fragile</h3>
+    </div>
+    <div class="kv">
+      <div>Location</div><div><code>run.clj:20–29</code> (<code>generic-cmd</code>); callers in <code>lock.clj</code>, <code>git.clj</code>, <code>unlock.clj</code>, <code>run.clj:31–40</code></div>
+      <div>Dimensions</div><div>Testability · Security &amp; Robustness · Maintainability</div>
+    </div>
+    <p><b>The issue.</b> Every external command flows through <code>generic-cmd</code>, which calls
+    <code>process/shell</code> directly with a <b>string</b> assembled via <code>format</code>
+    (e.g. <code>(format "git tag -d %s" lock-name)</code>). Two consequences: (a) there is no injection
+    point for a fake runner, so anything that shells out can only be exercised by running real
+    <code>git</code>/<code>bash</code> — which is precisely why 11 of 21 namespaces, <i>including the
+    security-sensitive <code>big-config.lock</code></i>, have no unit tests and the only coverage is a
+    slow integration test that <code>git init --bare</code>s and spawns <code>clojure -M:test</code>;
+    (b) string interpolation into commands — some of which are literally <code>bash -c '…'</code>
+    (<code>run.clj:33</code>) — is a latent shell-injection / tokenization-fragility class the moment
+    any interpolated value contains whitespace or shell metacharacters.</p>
+    <div class="ba">
+      <div class="col before"><h4>Before</h4>
+<pre><code><span class="cmt">;; run.clj</span>
+(defn generic-cmd [&amp; {:keys [opts cmd key shell-opts]}]
+  (let [shell-opts (merge {:continue true :out :string
+                           :err :string} shell-opts)
+        proc (process/shell shell-opts cmd) <span class="cmt">; direct</span>
+        opts (handle-cmd opts proc)]
+    (if key
+      (assoc opts key (-&gt; (:out proc) str/trim-newline))
+      opts)))
+
+<span class="cmt">;; lock.clj — string interpolation</span>
+(defn ^:no-doc delete-tag [opts]
+  (let [{:keys [::lock-name]} opts]
+    (generic-cmd :opts opts
+                 :cmd (format "git tag -d %s"
+                              lock-name))))</code></pre></div>
+      <div class="col after"><h4>After — one rebindable seam, argv vectors</h4>
+<pre><code><span class="cmt">;; run.clj</span>
+(defn default-runner [shell-opts cmd]
+  (process/shell shell-opts cmd))
+(def ^:dynamic *runner* default-runner)
+
+(defn generic-cmd [&amp; {:keys [opts cmd key shell-opts]}]
+  (let [shell-opts (merge {:continue true :out :string
+                           :err :string} shell-opts)
+        proc (*runner* shell-opts cmd) <span class="cmt">; single seam</span>
+        opts (handle-cmd opts proc)]
+    (if key
+      (assoc opts key (-&gt; (:out proc) str/trim-newline))
+      opts)))
+
+<span class="cmt">;; lock.clj — argv, no shell parsing</span>
+(defn ^:no-doc delete-tag [opts]
+  (generic-cmd :opts opts
+               :cmd ["git" "tag" "-d"
+                     (::lock-name opts)]))</code></pre></div>
+    </div>
+    <h4 style="margin:6px 0 4px;font-size:12px;letter-spacing:.08em;color:#7ee0b4;text-transform:uppercase">Now unit-testable without git</h4>
+<pre><code>(deftest delete-tag-builds-correct-argv
+  (binding [run/*runner* (fn [_ cmd] {:exit 0 :out "" :err "" :cmd cmd})]
+    (is (= ["git" "tag" "-d" "LOCK-DEAD"]
+           (-&gt; (lock/delete-tag {::lock/lock-name "LOCK-DEAD"})
+               ::bc/procs first :cmd)))))</code></pre>
+    <div class="impact"><b>Impact — Testability / Safety / DX:</b> Makes ~half the codebase
+    deterministically unit-testable (fast CI, no git/bash dependency), closes the injection/tokenization
+    fragility class repo-wide, and yields a single auditable execution chokepoint for logging, dry-run,
+    and sandboxing.</div>
+  </div>
+
+  <!-- ================= FINDING 3 ================= -->
+  <div class="finding high" id="f3">
+    <div class="head">
+      <span class="rank">#3</span><span class="pill high">High</span>
+      <h3>Hidden mutable atoms drive the &ldquo;functional&rdquo; engine; pluggable dispatch reflects on runtime internals</h3>
+    </div>
+    <div class="kv">
+      <div>Location</div><div><code>workflow.clj:340–390</code> (<code>run-steps</code>); <code>pluggable.clj:21–29</code> (<code>-&gt;workflow*</code>)</div>
+      <div>Dimensions</div><div>Architecture &amp; Design · Maintainability · Testability</div>
+    </div>
+    <p><b>The issue.</b> The engine already threads <code>opts</code> functionally and exposes
+    <code>next-fn</code> for branching, yet <code>run-steps</code> layers two closed-over atoms
+    (<code>opts*</code>, <code>steps*</code>) and drives iteration by <code>swap!</code>-ing a hidden
+    queue inside <code>next-fn</code>. The remaining step list is invisible to <code>opts</code>, so
+    step-fn middleware can't observe it, runs aren't inspectable or resumable, and the "pure step"
+    contract the framework advertises is quietly broken. Separately, <code>pluggable/-&gt;workflow*</code>
+    resolves the multimethod by reflecting on private <code>clojure.lang.MultiFn</code> internals
+    (<code>.getMethod</code>) — twice per step — coupling the framework to runtime implementation details.</p>
+    <div class="ba">
+      <div class="col before"><h4>Before — workflow.clj</h4>
+<pre><code>(defn run-steps [step-fns {:keys [::steps] :as opts}]
+  (let [opts*  (atom opts)        <span class="cmt">; hidden state</span>
+        steps* (atom (map ... steps))
+        wf (pluggable/-&gt;workflow*
+            {... :next-fn
+             (fn [step _ {:keys [::bc/exit] :as o}]
+               (reset! opts* o)                <span class="cmt">; mutate</span>
+               (cond
+                 ...
+                 :else
+                 (let [n (first @steps*)
+                       _ (swap! steps* rest)]   <span class="cmt">; mutate</span>
+                   ...)))})]
+    (wf step-fns @opts*)))</code></pre></div>
+      <div class="col after"><h4>After — queue lives in opts; engine stays pure</h4>
+<pre><code>(defn run-steps [step-fns {:keys [::steps] :as opts}]
+  (let [opts (assoc opts ::queue
+                    (map #(if (namespace %) %
+                              (keyword "big-config.workflow"
+                                       (name %)))
+                         steps))
+        wf (pluggable/-&gt;workflow*
+            {:first-step ::start :last-step ::end
+             :wire-fn (fn [step sfs] ...)
+             :next-fn
+             (fn [step _ {:keys [::bc/exit ::queue]
+                          :as o}]
+               (cond
+                 (= step ::end) [nil o]
+                 (pos? exit)    [::end o]
+                 :else
+                 (if-let [n (first queue)]
+                   [n (assoc o ::queue (rest queue))]
+                   [::end o])))})]
+    (wf step-fns opts)))</code></pre></div>
+    </div>
+    <div class="ba">
+      <div class="col before"><h4>Before — pluggable.clj (reflection)</h4>
+<pre><code>(let [method
+      (.getMethod ^clojure.lang.MultiFn
+                  handle-step step)
+      default-method
+      (.getMethod ^clojure.lang.MultiFn
+                  handle-step :default)]
+  (if (and method (not= method default-method))
+    (handle-step f step step-fns opts)
+    (f opts)))</code></pre></div>
+      <div class="col after"><h4>After — dispatch via the multimethod itself</h4>
+<pre><code>(defmulti handle-step
+  (fn [_f step _sfs _opts] step))
+
+(defmethod handle-step :default [f _ _ opts]
+  (f opts))
+
+<span class="cmt">;; wire-fn just wraps the step:</span>
+(fn [step sfs]
+  (let [[f next-step] (wire-fn step sfs)]
+    [#(handle-step f step sfs %) next-step]))</code></pre></div>
+    </div>
+    <div class="impact"><b>Impact — Maintainability / Robustness:</b> The workflow becomes fully
+    data-driven (inspectable, resumable, observable by step-fns) and thread-safe by construction; the
+    framework no longer depends on <code>clojure.lang.MultiFn</code> internals, removing a silent
+    breakage point across Clojure upgrades and roughly halving the cognitive load of the engine's core.</div>
+  </div>
+
+  <!-- ================= FINDING 4 ================= -->
+  <div class="finding med" id="f4">
+    <div class="head">
+      <span class="rank">#4</span><span class="pill med">Medium</span>
+      <h3>Duplication &amp; dead code from an unfinished <code>step → workflow</code> deprecation</h3>
+    </div>
+    <div class="kv">
+      <div>Location</div><div><code>selmer_filters.clj:6–12</code>; <code>print-step-fn</code> in <code>step.clj:22–57</code> &amp; <code>workflow.clj:284–318</code>; <code>step.clj</code>, <code>build.clj</code></div>
+      <div>Dimensions</div><div>Code Quality · Maintainability</div>
+    </div>
+    <p><b>The issue.</b> Three concrete instances of avoidable drift: (1) the <code>:lookup-env</code>
+    Selmer filter is registered <b>twice, identically</b>; (2) the ~35-line <code>print-step-fn</code>
+    is duplicated near-verbatim between the deprecated <code>big-config.step</code> and the live
+    <code>big-config.workflow</code> — two copies that must be kept in sync by hand; (3)
+    <code>big-config.step</code> and <code>big-config.build</code> exist only to serve the deprecated
+    DSL yet are still fully wired into the dependency graph. <code>step.clj/parse</code> additionally
+    has a <code>cond</code> with no <code>:else</code>, so it can silently return <code>nil</code>.</p>
+    <div class="ba">
+      <div class="col before"><h4>Before — selmer_filters.clj</h4>
+<pre><code>(add-filter! :lookup-env
+             (fn [x] (System/getenv x)))
+
+(add-filter! :lookup-env          <span class="cmt">; dead</span>
+             (fn [x] (System/getenv x))) <span class="cmt">; duplicate</span></code></pre></div>
+      <div class="col after"><h4>After</h4>
+<pre><code>(add-filter! :lookup-env
+             (fn [x] (System/getenv x)))</code></pre></div>
+    </div>
+    <ul>
+      <li>Extract the single source-of-truth <code>print-step-fn</code> into <code>big-config.step-fns</code>
+      and have both call sites reuse it (delete the <code>step.clj</code> copy).</li>
+      <li>Move <code>big-config.step</code> + <code>big-config.build</code> behind an explicit
+      <code>deprecated/</code> path, or delete once the last caller migrates — CLAUDE.md already
+      forbids using <code>build</code> as a synonym for <code>render</code>.</li>
+      <li>Add an <code>:else</code> branch to <code>step.clj/parse</code> (or delete the namespace).</li>
+    </ul>
+    <div class="impact"><b>Impact — DX / Maintainability:</b> Removes ~80 lines of duplicated/dead
+    code and one entire class of "fixed it in one copy, not the other" bugs; shrinks the public
+    namespace surface and clarifies which DSL is current.</div>
+  </div>
+
+  <!-- ================= SECONDARY ================= -->
+  <h2 id="secondary">Secondary Findings</h2>
+  <p class="muted">Lower-priority items worth scheduling, not blocking.</p>
+  <table>
+    <thead><tr><th>Area</th><th>Observation</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill med">Med</span> Robustness</td>
+        <td><code>render.clj:220–226</code> — <code>Files/createTempDirectory</code> + <code>.deleteOnExit</code>.
+        <code>deleteOnExit</code> only removes an <i>empty</i> dir at JVM shutdown, so populated temp
+        trees accumulate on disk in long-lived processes (REPL/CI).</td>
+        <td>Wrap in <code>try/finally</code> with recursive <code>fs/delete-tree</code>.</td></tr>
+      <tr><td><span class="pill med">Med</span> Security</td>
+        <td><code>lock.clj:92–98</code> — <code>parse-tag-content</code> runs <code>edn/read-string</code>
+        on the body of a git tag fetched from a remote, then uses it for the ownership check. A trust
+        boundary on attacker-influenceable data.</td>
+        <td>Validate shape with a spec before trusting it; reject unexpected forms.</td></tr>
+      <tr><td><span class="pill med">Med</span> Complexity</td>
+        <td><code>render.clj:200–241</code> (<code>copy-template-dir</code>) and
+        <code>workflow.clj:501–559</code> (<code>-&gt;workflow*</code>) carry very high cognitive
+        complexity — nested <code>case</code>/<code>if</code>/<code>run!</code> and chained threading.</td>
+        <td>Decompose into named sub-functions (one responsibility each); add unit tests around the seams.</td></tr>
+      <tr><td><span class="pill low">Low</span> Consistency</td>
+        <td>Error returns are constructed ad hoc (<code>(merge opts {::bc/exit 1 ::bc/err "…"})</code>)
+        in many steps, while success has a shared <code>core/ok</code> helper.</td>
+        <td>Add a symmetric <code>core/err</code> helper and use it everywhere for uniform shape.</td></tr>
+      <tr><td><span class="pill low">Low</span> Maintainability</td>
+        <td><code>workflow.clj</code> opens with a ~260-line namespace docstring before any code; it
+        also contains contradictory/aspirational examples.</td>
+        <td>Move long-form docs to a <code>doc/</code> guide (quickdoc can still ingest it); keep
+        concise docstrings on the public vars.</td></tr>
+      <tr><td><span class="pill low">Low</span> Robustness</td>
+        <td><code>core.clj:172–185</code> — <code>-&gt;step-fn</code> validation only catches the exact
+        <code>[nil :same]</code> pair and emits a confusing message.</td>
+        <td>Validate each argument independently with a clear error per case.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ================= TESTABILITY ================= -->
+  <h2 id="testability">Testability Deep-Dive</h2>
+  <div class="card">
+    <p><b>Coverage map.</b> Pure, deterministic logic is well tested — <code>workflow_test.clj</code>
+    exercises <code>parse-args</code>, <code>select-globals</code>, <code>new-prefix</code>,
+    <code>prepare</code>, <code>merge-params</code>, <code>read-bc-pars</code>; <code>pluggable</code>,
+    <code>render</code>, <code>store</code>, <code>run</code> have focused tests. The gap is everything
+    that touches the outside world:</p>
+    <ul>
+      <li><b>11 of 21 namespaces have no unit test</b>, including <code>lock</code> (git-tag locking —
+      security-sensitive), <code>git</code>, <code>unlock</code>, <code>system</code>,
+      <code>step_fns</code>, <code>selmer_filters</code>, <code>toml</code>,
+      <code>big-tofu/create</code>.</li>
+      <li>The single integration test (<code>integration_test.clj</code>) creates real bare git repos
+      and spawns a child <code>clojure -M:test</code> — accurate but slow and environment-coupled,
+      and it is the <i>only</i> thing exercising the lock/git logic at all.</li>
+      <li>Root cause is structural and identical to Finding&nbsp;2: there is no seam between the code
+      and <code>process/shell</code>. The single highest-leverage testability investment is the
+      <code>*runner*</code> indirection — it converts the entire lock/git/unlock surface from
+      "integration-only" to "unit-testable" with no behavioral change.</li>
+    </ul>
+  </div>
+
+  <!-- ================= STRENGTHS ================= -->
+  <h2 id="strengths">What Is Working Well</h2>
+  <div class="card">
+    <ul>
+      <li><b>Composable core.</b> <code>-&gt;workflow</code> / <code>-&gt;step-fn</code> and the
+      <code>opts</code>-threading model are a clean, idiomatic state machine; middleware (step-fns) is
+      a genuinely good extension mechanism.</li>
+      <li><b>Correct concurrency in the store.</b> <code>store.clj</code> implements WATCH/MULTI/EXEC
+      optimistic locking with a bounded restore-retry and snapshotting — ACID reasoning is explicit
+      and sound.</li>
+      <li><b>Disciplined naming conventions.</b> <code>-&gt;</code> constructors, <code>!</code>
+      side-effects, <code>?</code> predicates, namespaced keywords — applied consistently.</li>
+      <li><b>Boundary validation.</b> <code>render</code> uses <code>clojure.spec</code> to conform
+      templates/transforms and fails fast with explain-data; exceptions are funneled into
+      <code>opts</code> with structured ex-data.</li>
+      <li><b>Reflection hygiene.</b> <code>render.clj</code> sets <code>*warn-on-reflection*</code>.
+      Extending it to the other interop-touching namespaces is a cheap, worthwhile habit.</li>
+    </ul>
+  </div>
+
+  <h2 id="actionplan">Suggested Sequencing</h2>
+  <table>
+    <thead><tr><th>Order</th><th>Action</th><th>Effort</th><th>Risk if deferred</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Narrow the <code>new-prefix</code> docstring (Finding&nbsp;1)</td><td>S</td><td>Intentional, required design keeps reading as a concurrency race</td></tr>
+      <tr><td>2</td><td>Introduce <code>*runner*</code> seam + argv vectors (Finding&nbsp;2)</td><td>M</td><td>Untestable security path; injection fragility</td></tr>
+      <tr><td>3</td><td>Backfill <code>lock</code>/<code>git</code> unit tests on the new seam</td><td>M</td><td>Regressions in locking go undetected</td></tr>
+      <tr><td>4</td><td>De-atomize <code>run-steps</code> + simplify pluggable dispatch (Finding&nbsp;3)</td><td>M</td><td>Compounding engine complexity; upgrade fragility</td></tr>
+      <tr><td>5</td><td>Remove duplication / dead code (Finding&nbsp;4)</td><td>S</td><td>Sync-drift bugs between copies</td></tr>
+    </tbody>
+  </table>
+
+  <footer>
+    <p><b>Methodology &amp; caveats.</b> This report is a static source review of the entire repository
+    (all 21 <code>src</code> namespaces, 13 test files, build config, CI, and the
+    <code>resources/big-config</code> templates). Per the agreed scope, <b>no tooling was executed</b> —
+    clj-kondo, the test suite, and runtime profiling were not run, so performance statements are
+    reasoned from code structure rather than measured, and findings have not been confirmed against a
+    live execution. All code locations are cited as <code>file:line</code> for verification. Severity
+    reflects combined impact and urgency under the dimensions requested:
+    architecture, performance/scalability, code quality, security/robustness, and testability.</p>
+    <p class="muted">Generated for the BigConfig repository · 2026-05-16 · Principal Engineer review (static, advisory — no code modified).</p>
+  </footer>
+
+</div>
+</body>
+</html>

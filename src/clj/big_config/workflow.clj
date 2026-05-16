@@ -113,10 +113,19 @@
     * A vector containing:
       * Arguments for the tool workflow (e.g., `[\"render ...\"]`).
       * An optional `opts-fn` to adapt/merge outputs from previous steps into the current params.
-  > **Note:** `->workflow*` calls `new-prefix` on the globals derived from `opts`,
-  > which stamps a unique hash into both `::prefix` and `::object-prefix`. Each
-  > invocation of the composite workflow therefore writes to an isolated directory
-  > and object path, avoiding collisions when the same workflow is run concurrently.
+  > **Note:** `->workflow*` calls `new-prefix` on the globals derived from
+  > `opts`, which derives a **deterministic** discriminator from `:first-step`
+  > and stamps it into `::prefix` and `::object-prefix`. This is intentional: a
+  > given workflow always resolves to the **same** directory and object path so
+  > that (a) generated OpenTofu/Ansible can be inspected and iterated on during
+  > development, (b) a **local OpenTofu backend** keeps its `terraform.tfstate`
+  > across runs, and (c) paired `create`/`delete` workflows (which share
+  > `:first-step`) operate on the same state.
+  >
+  > Concurrency is an **explicit non-goal** of `new-prefix`. Running the same
+  > workflow concurrently against the same prefix is unsupported by design;
+  > mutual exclusion is the job of the `lock` step (`big-config.lock`). For
+  > isolated parallel runs, override `::prefix`/`::object-prefix` explicitly.
 
   ### Options for `opts` and step `render`
   * `::name` (required): The unique identifier for the workflow instance.
