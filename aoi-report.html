@@ -96,14 +96,18 @@
     threaded through pure steps) are idiomatic and genuinely composable. The Redis event-sourcing store
     correctly implements optimistic concurrency, and the pure helpers (<code>parse-args</code>,
     <code>prepare</code>, <code>merge-params</code>) are clean and well-tested.</p>
-    <p>The problems are concentrated, not pervasive. Three substantive issues stand out: a
-    <b>hard-wired shell boundary</b> that simultaneously creates injection fragility and leaves ~50%
-    of namespaces (including the security-sensitive lock) untestable; <b>hidden mutable state</b> that
-    undermines the otherwise-functional engine; and accumulated <b>duplication / dead code</b> from an
-    unfinished deprecation. A fourth item — the directory-isolation key — is a <b>documentation
-    defect, not a bug</b>: the deterministic paths are intentional and <i>required</i> for
-    local-backend state continuity and create/delete pairing, but the docstring mis-sells that
-    determinism as a concurrency guard. None require a rewrite — each has a contained, mechanical fix.</p>
+    <p>The problems are concentrated, not pervasive. The remaining substantive code issues are a
+    <b>hard-wired shell boundary</b> that created injection fragility and left ~50% of namespaces
+    (including the security-sensitive lock) untestable — Finding&nbsp;2, now implemented — and
+    accumulated <b>duplication / dead code</b> from an unfinished deprecation (Finding&nbsp;4). Two
+    items reclassified after maintainer input are <b>documentation defects, not bugs</b>: the
+    directory-isolation key, whose deterministic paths are intentional and <i>required</i> for
+    local-backend state continuity and create/delete pairing (Finding&nbsp;1); and the engine&rsquo;s
+    closed-over atoms, which are the deliberate accumulator and <i>subworkflow-isolation</i> barrier of
+    the composition layer — not a broken &ldquo;pure step&rdquo; contract (Finding&nbsp;3&nbsp;Part&nbsp;A).
+    A genuine sub-issue — reflection on <code>clojure.lang.MultiFn</code> internals
+    (Finding&nbsp;3&nbsp;Part&nbsp;B) — was real and has been fixed. None require a rewrite — each has a
+    contained, mechanical fix.</p>
   </div>
 
   <h3>Scorecard</h3>
@@ -111,8 +115,10 @@
     <thead><tr><th>Dimension</th><th>Grade</th><th>Assessment</th></tr></thead>
     <tbody>
       <tr><td>Architecture &amp; Design</td><td><span class="grade B">B−</span></td>
-        <td>Clean core primitives and separation of concerns, undermined by hidden atoms in the
-        engine, reflective multimethod dispatch, and a deprecated parallel CLI stack still fully wired.</td></tr>
+        <td>Clean core primitives and separation of concerns. The engine &ldquo;atoms&rdquo; are an
+        intentional subworkflow-isolation barrier at the composition layer (see Finding&nbsp;3), and
+        the reflective multimethod dispatch has been removed; the main remaining drag is a deprecated
+        parallel CLI stack still fully wired.</td></tr>
       <tr><td>Performance &amp; Scalability</td><td><span class="grade B">B</span></td>
         <td>No hot data paths or N+1 patterns; Redis store uses sound optimistic locking. Concurrency
         is handled explicitly by the <code>lock</code> step rather than by path uniqueness — an
@@ -133,7 +139,7 @@
   <div class="toc card">
     <a href="#f1">1 · <span class="pill low">Low</span> Isolation-key docstring oversells determinism as a concurrency guard</a>
     <a href="#f2">2 · <span class="pill high">High</span> Hard-wired shell boundary: untestable + injection-fragile</a>
-    <a href="#f3">3 · <span class="pill high">High</span> Hidden mutable atoms drive the &ldquo;functional&rdquo; engine</a>
+    <a href="#f3">3 · <span class="pill low">Low</span> Engine atoms are intentional subworkflow isolation (docs); pluggable reflection fixed</a>
     <a href="#f4">4 · <span class="pill med">Medium</span> Duplication &amp; dead code from unfinished deprecation</a>
   </div>
 
@@ -272,61 +278,62 @@
   </div>
 
   <!-- ================= FINDING 3 ================= -->
-  <div class="finding high" id="f3">
+  <div class="finding low" id="f3">
     <div class="head">
-      <span class="rank">#3</span><span class="pill high">High</span>
-      <h3>Hidden mutable atoms drive the &ldquo;functional&rdquo; engine; pluggable dispatch reflects on runtime internals</h3>
+      <span class="rank">#3</span><span class="pill low">Low</span>
+      <h3>Engine atoms are an intentional subworkflow-isolation barrier (documentation); pluggable reflection was real — fixed</h3>
     </div>
     <div class="kv">
-      <div>Location</div><div><code>workflow.clj:340–390</code> (<code>run-steps</code>); <code>pluggable.clj:21–29</code> (<code>-&gt;workflow*</code>)</div>
-      <div>Dimensions</div><div>Architecture &amp; Design · Maintainability · Testability</div>
+      <div>Location</div><div><code>workflow.clj:349–399</code> (<code>run-steps</code>), <code>workflow.clj:510–568</code> (<code>-&gt;workflow*</code>); <code>pluggable.clj:19–34</code> (<code>-&gt;workflow*</code>)</div>
+      <div>Dimensions</div><div>Part&nbsp;A: Documentation · Architecture (intent, not behavior) — Part&nbsp;B: Robustness · Maintainability</div>
+      <div>Status</div><div>Part&nbsp;A — behavior <b>intentional and correct</b>; docstrings clarified in <code>workflow.clj</code>. Part&nbsp;B — <b>real defect, fixed</b> in <code>pluggable.clj</code> (explicit <code>:default</code> method + direct dispatch)</div>
     </div>
-    <p><b>The issue.</b> The engine already threads <code>opts</code> functionally and exposes
-    <code>next-fn</code> for branching, yet <code>run-steps</code> layers two closed-over atoms
-    (<code>opts*</code>, <code>steps*</code>) and drives iteration by <code>swap!</code>-ing a hidden
-    queue inside <code>next-fn</code>. The remaining step list is invisible to <code>opts</code>, so
-    step-fn middleware can't observe it, runs aren't inspectable or resumable, and the "pure step"
-    contract the framework advertises is quietly broken. Separately, <code>pluggable/-&gt;workflow*</code>
-    resolves the multimethod by reflecting on private <code>clojure.lang.MultiFn</code> internals
-    (<code>.getMethod</code>) — twice per step — coupling the framework to runtime implementation details.</p>
+
+    <h4 style="margin:20px 0 4px;font-size:12px;letter-spacing:.08em;color:#a9c8ff;text-transform:uppercase">Part A — run-steps / -&gt;workflow* atoms · reclassified High → Low (by design)</h4>
+    <p><b>Clarification (revised after maintainer input).</b> <code>run-steps</code> and
+    <code>workflow/-&gt;workflow*</code> are a <b>composition layer</b> — a &ldquo;workflow of
+    workflows&rdquo; — <i>not</i> workflow steps. The pure-step / single-threaded-<code>opts</code>
+    contract is scoped to the steps <i>within one workflow</i>. At the composition layer the required
+    invariant is instead <b>subworkflow isolation</b>:</p>
+    <ul>
+      <li><b>Isolated input opts:</b> each subworkflow (<code>::create</code> / <code>::delete</code>,
+      or each <code>:pipeline</code> step) runs on a purpose-built <code>opts</code> —
+      <code>create-opts</code> / <code>delete-opts</code>, or
+      <code>(merge step-args globals-opts &lt;step&gt;-opts)</code> — never the parent&rsquo;s running
+      <code>opts</code>.</li>
+      <li><b>Accumulated results:</b> each subworkflow&rsquo;s terminal <code>opts</code> is collected
+      under its step key (a <i>vector</i> in <code>run-steps</code>, so repeated create/delete
+      invocations are kept side-by-side as history); only <code>::bc/exit</code> /
+      <code>::bc/err</code> propagate upward to drive the parent&rsquo;s branching and short-circuit.</li>
+    </ul>
+    <p>The closed-over atom is therefore the deliberate <b>accumulator + isolation barrier</b> that
+    <i>implements</i> these semantics — not a purity leak. The originally-proposed fix (fold the queue
+    and results into one threaded <code>opts</code>) would <b>break subworkflow isolation and discard
+    per-invocation result history</b> — it is <i>not</i> behavior-preserving. The only defect was that
+    the docstrings did not state this contract; they now do.</p>
     <div class="ba">
-      <div class="col before"><h4>Before — workflow.clj</h4>
-<pre><code>(defn run-steps [step-fns {:keys [::steps] :as opts}]
-  (let [opts*  (atom opts)        <span class="cmt">; hidden state</span>
-        steps* (atom (map ... steps))
-        wf (pluggable/-&gt;workflow*
-            {... :next-fn
-             (fn [step _ {:keys [::bc/exit] :as o}]
-               (reset! opts* o)                <span class="cmt">; mutate</span>
-               (cond
-                 ...
-                 :else
-                 (let [n (first @steps*)
-                       _ (swap! steps* rest)]   <span class="cmt">; mutate</span>
-                   ...)))})]
-    (wf step-fns @opts*)))</code></pre></div>
-      <div class="col after"><h4>After — queue lives in opts; engine stays pure</h4>
-<pre><code>(defn run-steps [step-fns {:keys [::steps] :as opts}]
-  (let [opts (assoc opts ::queue
-                    (map #(if (namespace %) %
-                              (keyword "big-config.workflow"
-                                       (name %)))
-                         steps))
-        wf (pluggable/-&gt;workflow*
-            {:first-step ::start :last-step ::end
-             :wire-fn (fn [step sfs] ...)
-             :next-fn
-             (fn [step _ {:keys [::bc/exit ::queue]
-                          :as o}]
-               (cond
-                 (= step ::end) [nil o]
-                 (pos? exit)    [::end o]
-                 :else
-                 (if-let [n (first queue)]
-                   [n (assoc o ::queue (rest queue))]
-                   [::end o])))})]
-    (wf step-fns opts)))</code></pre></div>
+      <div class="col before"><h4>Before — run-steps docstring</h4>
+<pre><code>&gt; A dynamic workflow that takes a list of steps,
+&gt; a create function, and a delete function.
+&gt; See the namespace big-config.workflow</code></pre></div>
+      <div class="col after"><h4>After — states the composition contract</h4>
+<pre><code>&gt; A *composition layer* — a "workflow of
+&gt; workflows", not a workflow step. The pure-step
+&gt; contract is scoped WITHIN one workflow; here the
+&gt; invariant is SUBWORKFLOW ISOLATION: each
+&gt; subworkflow gets a purpose-built opts; its
+&gt; terminal opts is accumulated under the step key;
+&gt; only ::bc/exit / ::bc/err propagate up. The atom
+&gt; is the deliberate accumulator + isolation
+&gt; barrier — folding into one threaded opts would
+&gt; break isolation and is NOT behavior-preserving.</code></pre></div>
     </div>
+
+    <h4 style="margin:24px 0 4px;font-size:12px;letter-spacing:.08em;color:#7ee0b4;text-transform:uppercase">Part B — pluggable/-&gt;workflow* reflected on clojure.lang.MultiFn (real defect — fixed)</h4>
+    <p><b>The issue.</b> <code>pluggable/-&gt;workflow*</code> resolved the multimethod by reflecting
+    on private <code>clojure.lang.MultiFn</code> internals (<code>.getMethod</code>) — twice per step
+    — coupling the framework to runtime implementation details and risking silent breakage across
+    Clojure upgrades. This was a genuine defect and has been fixed.</p>
     <div class="ba">
       <div class="col before"><h4>Before — pluggable.clj (reflection)</h4>
 <pre><code>(let [method
@@ -350,10 +357,14 @@
   (let [[f next-step] (wire-fn step sfs)]
     [#(handle-step f step sfs %) next-step]))</code></pre></div>
     </div>
-    <div class="impact"><b>Impact — Maintainability / Robustness:</b> The workflow becomes fully
-    data-driven (inspectable, resumable, observable by step-fns) and thread-safe by construction; the
-    framework no longer depends on <code>clojure.lang.MultiFn</code> internals, removing a silent
-    breakage point across Clojure upgrades and roughly halving the cognitive load of the engine's core.</div>
+
+    <div class="impact"><b>Impact:</b> <b>Part&nbsp;A</b> — no behavior change; the docstrings now
+    document an intentional, <i>required</i> composition-layer design, removing the only thing that
+    made it read as a broken contract. Reclassified <span class="pill high">High</span> →
+    <span class="pill low">Low</span> after maintainer confirmation that the atoms implement required
+    subworkflow isolation. <b>Part&nbsp;B</b> — removes a dependency on
+    <code>clojure.lang.MultiFn</code> internals (a silent upgrade-breakage point) with no behavior
+    change; covered by <code>pluggable_test.clj</code> / <code>workflow_test.clj</code>.</div>
   </div>
 
   <!-- ================= FINDING 4 ================= -->
@@ -484,7 +495,7 @@
       <tr><td>1</td><td>Narrow the <code>new-prefix</code> docstring (Finding&nbsp;1)</td><td>S</td><td>Intentional, required design keeps reading as a concurrency race</td></tr>
       <tr><td>2</td><td>Introduce <code>*runner*</code> seam + argv vectors (Finding&nbsp;2)</td><td>M</td><td>Untestable security path; injection fragility</td></tr>
       <tr><td>3</td><td>Backfill <code>lock</code>/<code>git</code> unit tests on the new seam</td><td>M</td><td>Regressions in locking go undetected</td></tr>
-      <tr><td>4</td><td>De-atomize <code>run-steps</code> + simplify pluggable dispatch (Finding&nbsp;3)</td><td>M</td><td>Compounding engine complexity; upgrade fragility</td></tr>
+      <tr><td>4</td><td>Clarify <code>run-steps</code> / <code>-&gt;workflow*</code> composition-layer docstrings; pluggable reflection already removed (Finding&nbsp;3)</td><td>S</td><td>Intentional subworkflow-isolation keeps reading as a broken &ldquo;pure&rdquo; contract</td></tr>
       <tr><td>5</td><td>Remove duplication / dead code (Finding&nbsp;4)</td><td>S</td><td>Sync-drift bugs between copies</td></tr>
     </tbody>
   </table>
