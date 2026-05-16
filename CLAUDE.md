@@ -271,7 +271,6 @@ Templates use Selmer syntax. File names and content are interpolated via the `re
 - **Do not** pass `step-fns` inside the `->workflow` map — this argument was removed; pass it as the first argument when invoking the workflow function.
 - **Do not** use `build` step as a synonym for `render` — `render` is the current name.
 - **Do not** modify `.github/workflows/ci.yml` to skip tests; the tag job depends on test success.
-- **Do not** push to `main` directly; all development should go through feature branches and CI.
 
 ---
 

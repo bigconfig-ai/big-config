@@ -17,11 +17,25 @@
                    (select-keys [:exit :err])
                    (update-keys (fn [k] (keyword "big-config" (name k)))))))))
 
+(defn default-runner
+  "The single boundary between BigConfig and the OS. `cmd` may be a string
+  (tokenized by babashka.process — used by the `exec` DSL) or a vector, which is
+  splatted into `process/shell` as argv so each element is passed verbatim with
+  no tokenization or shell interpretation (preferred for any command containing
+  interpolated values). Rebind `*runner*` in tests to exercise command
+  construction without spawning a real process."
+  [shell-opts cmd]
+  (if (sequential? cmd)
+    (apply process/shell shell-opts cmd)
+    (process/shell shell-opts cmd)))
+
+(def ^:dynamic *runner* default-runner)
+
 (defn generic-cmd [& {:keys [opts cmd key shell-opts]}]
   (let [shell-opts (merge {:continue true
                            :out :string
                            :err :string} shell-opts)
-        proc (process/shell shell-opts cmd)
+        proc (*runner* shell-opts cmd)
         opts (handle-cmd opts proc)]
     (if key
       (assoc opts key (-> (:out proc)
@@ -37,7 +51,7 @@
 
 (defn mktemp-remove-dir [{:keys [::dir] :as opts}]
   (generic-cmd :opts opts
-               :cmd (format "rm -rf %s" dir)))
+               :cmd ["rm" "-rf" dir]))
 
 (defn run-cmd [{:keys [::bc/env ::shell-opts ::cmds] :as opts}]
   (let [shell-opts (assoc shell-opts :continue true)
@@ -49,7 +63,7 @@
                              :err :inherit}
                             shell-opts))
         cmd (first cmds)
-        proc (process/shell shell-opts cmd)]
+        proc (*runner* shell-opts cmd)]
     (handle-cmd opts proc)))
 
 (defn push-nil [{:keys [::cmds] :as opts}]

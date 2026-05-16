@@ -208,6 +208,7 @@
     <div class="kv">
       <div>Location</div><div><code>run.clj:20–29</code> (<code>generic-cmd</code>); callers in <code>lock.clj</code>, <code>git.clj</code>, <code>unlock.clj</code>, <code>run.clj:31–40</code></div>
       <div>Dimensions</div><div>Testability · Security &amp; Robustness · Maintainability</div>
+      <div>Status</div><div><b>Implemented</b> — added a rebindable <code>*runner*</code> seam in <code>run.clj</code>; converted all internal <code>lock</code>/<code>git</code> commands to argv vectors (no <code>format</code> interpolation); added <code>lock_test.clj</code> exercising the lock workflow without git</div>
     </div>
     <p><b>The issue.</b> Every external command flows through <code>generic-cmd</code>, which calls
     <code>process/shell</code> directly with a <b>string</b> assembled via <code>format</code>

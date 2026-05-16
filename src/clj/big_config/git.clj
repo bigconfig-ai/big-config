@@ -10,29 +10,27 @@
                    (keyword? revision) (revision opts)
                    :else (throw (ex-info "Revision is neither a string nor a keyword" {:revision revision
                                                                                        :key key
-                                                                                       :opts opts})))
-        cmd (format "git rev-parse %s" revision)]
+                                                                                       :opts opts})))]
     (generic-cmd :opts opts
-                 :cmd cmd
+                 :cmd ["git" "rev-parse" revision]
                  :key key)))
 
 (defn fetch-origin [opts]
   (generic-cmd :opts opts
-               :cmd "git fetch origin"))
+               :cmd ["git" "fetch" "origin"]))
 
 (defn upstream-name [key opts]
-  (let [cmd "git rev-parse --abbrev-ref @{upstream}"]
-    (generic-cmd :opts opts
-                 :cmd cmd
-                 :key key)))
+  (generic-cmd :opts opts
+               :cmd ["git" "rev-parse" "--abbrev-ref" "@{upstream}"]
+               :key key))
 
 (defn git-diff [opts]
   (generic-cmd :opts opts
-               :cmd "git diff --quiet"))
+               :cmd ["git" "diff" "--quiet"]))
 
 (defn git-push [opts]
   (generic-cmd :opts opts
-               :cmd "git push"))
+               :cmd ["git" "push"]))
 
 (defn compare-revisions [opts]
   (let [{:keys [::prev-revision

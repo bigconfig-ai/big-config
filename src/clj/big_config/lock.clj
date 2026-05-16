@@ -31,10 +31,9 @@
   currently holds it.
   "
   (:require
-   [babashka.process :as process]
    [big-config :as bc]
    [big-config.core :as utils :refer [->workflow choice]]
-   [big-config.run :refer [generic-cmd handle-cmd]]
+   [big-config.run :refer [generic-cmd]]
    [big-config.utils :refer [sort-nested-map]]
    [clojure.edn :as edn]
    [clojure.string :as str]))
@@ -57,36 +56,33 @@
 (defn ^:no-doc delete-tag [opts]
   (let [{:keys [::lock-name]} opts]
     (generic-cmd :opts opts
-                 :cmd (format "git tag -d %s" lock-name))))
+                 :cmd ["git" "tag" "-d" lock-name])))
 
 (defn- create-tag [opts]
-  (let [{:keys [::lock-name ::lock-details]} opts
-        proc (-> (process/shell {:continue true
-                                 :in (str ">>>" (pr-str lock-details))
-                                 :out :string
-                                 :err :string} (format "git tag -a %s -F -" lock-name)))]
-    (handle-cmd opts proc)))
+  (let [{:keys [::lock-name ::lock-details]} opts]
+    (generic-cmd :opts opts
+                 :shell-opts {:in (str ">>>" (pr-str lock-details))}
+                 :cmd ["git" "tag" "-a" lock-name "-F" "-"])))
 
 (defn- push-tag [opts]
   (let [{:keys [::lock-name]} opts]
     (generic-cmd :opts opts
-                 :cmd (format "git push origin %s" lock-name))))
+                 :cmd ["git" "push" "origin" lock-name])))
 
 (defn ^:no-doc delete-remote-tag [opts]
   (let [{:keys [::lock-name]} opts]
     (generic-cmd :opts opts
-                 :cmd (format "git push --delete origin %s" lock-name))))
+                 :cmd ["git" "push" "--delete" "origin" lock-name])))
 
 (defn- get-remote-tag [opts]
   (let [{:keys [::lock-name]} opts]
     (generic-cmd :opts opts
-                 :cmd (format "git fetch origin tag %s --no-tags" lock-name))))
+                 :cmd ["git" "fetch" "origin" "tag" lock-name "--no-tags"])))
 
 (defn- read-tag [opts]
-  (let [{:keys [::lock-name]} opts
-        cmd (format "git cat-file -p %s" lock-name)]
+  (let [{:keys [::lock-name]} opts]
     (generic-cmd :opts opts
-                 :cmd cmd
+                 :cmd ["git" "cat-file" "-p" lock-name]
                  :key ::tag-content)))
 
 (defn- parse-tag-content [tag-content]
@@ -110,9 +106,8 @@
 
 (defn ^:no-doc check-remote-tag [opts]
   (let [{:keys [::lock-name]} opts
-        cmd (format "git ls-remote --exit-code origin  refs/tags/%s" lock-name)
         {:keys [::bc/exit ::bc/err] :as opts} (generic-cmd :opts opts
-                                                           :cmd cmd)]
+                                                           :cmd ["git" "ls-remote" "--exit-code" "origin" (str "refs/tags/" lock-name)])]
     (merge opts (if (= exit 2)
                   {::bc/exit 0
                    ::bc/err nil}
