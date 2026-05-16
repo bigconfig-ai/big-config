@@ -757,11 +757,48 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
     (wf step-fns opts)))</code></pre>
 <div class="callout">
   <strong>Note</strong>
-  <code>-&gt;workflow*</code> calls <code>workflow/new-prefix</code> on the globals derived
-  from <code>opts</code>, stamping a unique hash into both <code>::prefix</code> and
-  <code>::object-prefix</code>. Each invocation writes to an isolated directory and
-  object path, avoiding collisions when the same composite workflow runs concurrently.
+  <code>-&gt;workflow*</code> calls <code>workflow/new-prefix</code> to derive a
+  <em>deterministic</em> discriminator from <code>:first-step</code> into
+  <code>::prefix</code> / <code>::object-prefix</code>. This is intentional: a workflow
+  always resolves to the <em>same</em> directory/object path so (a) generated code can be
+  inspected and re-run in place, (b) a local OpenTofu backend keeps
+  <code>terraform.tfstate</code> across runs, and (c) paired <code>create</code> /
+  <code>delete</code> (which share <code>:first-step</code>) resolve to the same state.
+  Concurrency is an <strong>explicit non-goal</strong> here — mutual exclusion is the job
+  of the <code>lock</code> step (<code>big-config.lock</code>). For isolated parallel runs,
+  override <code>::prefix</code> / <code>::object-prefix</code> explicitly.
 </div>
+
+<h3>Subworkflow isolation</h3>
+<p>
+  <code>run-steps</code> and <code>-&gt;workflow*</code> are a <em>composition layer</em>
+  — a &ldquo;workflow of workflows.&rdquo; The pure-step contract (a single
+  <code>opts</code> map threaded through the steps) holds <em>within</em> one workflow.
+  Across the composition layer the contract is instead
+  <strong>subworkflow isolation</strong>:
+</p>
+<ul>
+  <li>
+    <strong>Isolated input.</strong> Every subworkflow — <code>::create</code> /
+    <code>::delete</code>, or each <code>:pipeline</code> step — runs on a purpose-built
+    <code>opts</code> (<code>create-opts</code> / <code>delete-opts</code>, or
+    <code>(merge step-args globals-opts &lt;step&gt;-opts)</code>), seeded from the shared
+    globals and any step-specific options &mdash; never the parent&rsquo;s running
+    <code>opts</code>. One subworkflow cannot leak transient state into the next.
+  </li>
+  <li>
+    <strong>Accumulated output.</strong> Each subworkflow&rsquo;s terminal
+    <code>opts</code> is collected under its step key (a vector in <code>run-steps</code>,
+    so repeated <code>create</code> / <code>delete</code> runs are kept side-by-side as
+    history). Only <code>::bc/exit</code> and <code>::bc/err</code> propagate upward to
+    drive the parent&rsquo;s branching and short-circuit.
+  </li>
+</ul>
+<p>
+  This isolation is what lets a composite re-run <code>create</code> then
+  <code>delete</code> against shared state, and lets orchestrators map one tool&rsquo;s
+  outputs into the next tool&rsquo;s params without cross-contamination.
+</p>
 </section>
 
 <section id="builtin-steps">
