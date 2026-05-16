@@ -329,7 +329,6 @@
     <div class="group-title">Project</div>
     <ul>
       <li><a href="#dev-workflow">Development workflow</a></li>
-      <li><a href="#build">Build</a></li>
       <li><a href="#ci">CI/CD</a></li>
       <li><a href="#conventions">Conventions</a></li>
       <li><a href="#avoid">What to avoid</a></li>
@@ -396,7 +395,7 @@ clojure -Tbig-config package \
   optional <code>tofu-backend</code> state configuration, ping-only Ansible workflows,
   and <code>bb validate</code> / <code>bb describe</code> tasks.
 </p>
-<p>The published artifact name is <code>motain/big-login</code> (see <code>build.clj</code>). Versions follow <code>0.3.&lt;git-commit-count&gt;</code>.</p>
+<p>Versions follow <code>0.3.&lt;git-commit-count&gt;</code>.</p>
 </section>
 
 <section id="repo-layout">
@@ -420,7 +419,6 @@ clojure -Tbig-config package \
 ├── .lsp/               # clojure-lsp config
 ├── deps.edn            # Clojure deps and aliases
 ├── bb.edn              # Babashka tasks
-├── build.clj           # tools.build script (uberjar)
 ├── devenv.nix          # Nix dev environment
 └── devenv.yaml         # devenv packages list</code></pre>
 
@@ -1308,14 +1306,6 @@ bb    test-bb-task                                 # BigConfig system tests</cod
   just          {:doc  "setup the dev environment and run a recipe"
                  :task (do (run 'build)
                            (shell (str/join " " (into ["just"] *command-line-args*))))}}}</code></pre>
-</section>
-
-<section id="build">
-<h2>Build (uberjar) <a href="#build" class="anchor">#</a></h2>
-<pre><code class="language-bash">clojure -T:build all     # Clean, prep, and build uberjar
-clojure -T:build uber    # Uberjar only
-clojure -T:build clean   # Clean target/</code></pre>
-<p><code>build.clj</code> targets <code>motain/big-login</code> with a default version of <code>0.0.1-SNAPSHOT</code> for local builds. The uberjar bundles <code>src/clj</code>, <code>resources</code>, <code>env/prod/resources</code>, and <code>env/prod/clj</code>, with the entry point <code>motain.big-login.core</code>.</p>
 </section>
 
 <section id="ci">

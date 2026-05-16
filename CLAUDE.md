@@ -30,7 +30,6 @@ big-config/
 ├── .lsp/               # LSP config (clojure-lsp)
 ├── deps.edn            # Clojure deps and aliases
 ├── bb.edn              # Babashka tasks
-├── build.clj           # tools.build script (uberjar)
 ├── devenv.nix          # Nix dev environment definition
 └── devenv.yaml         # devenv packages list
 ```
@@ -175,16 +174,6 @@ Key REPL helpers in `env/dev/clj/`:
 - `quickdoc` — API documentation generation
 
 Use `(comment ...)` blocks for REPL exploration (they appear throughout the source).
-
-### Building
-
-```shell
-clojure -T:build all     # Clean, prep, and build uberjar
-clojure -T:build uber    # Uberjar only
-clojure -T:build clean   # Clean target/
-```
-
-The library artifact name is `motain/big-login` (see `build.clj`).
 
 ---
 
