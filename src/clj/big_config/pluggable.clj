@@ -13,6 +13,9 @@
   `:wire-fn` in `->workflow*`."
   (fn [_f step _step-fns _opts] step))
 
+(defmethod handle-step :default [f _step _step-fns opts]
+  (f opts))
+
 (defn ->workflow*
   "Similar to `core/->workflow`, but wraps each step execution in the `handle-step`
   multimethod, allowing for external extension or overriding of specific steps."
@@ -21,11 +24,7 @@
     (let [new-wire-fn (fn [step step-fns]
                         (let [[f next-step] (wire-fn step step-fns)]
                           [(fn [opts]
-                             (let [method (.getMethod ^clojure.lang.MultiFn handle-step step)
-                                   default-method (.getMethod ^clojure.lang.MultiFn handle-step :default)]
-                               (if (and method (not= method default-method))
-                                 (handle-step f step step-fns opts)
-                                 (f opts))))
+                             (handle-step f step step-fns opts))
                            next-step]))
           wf (core/->workflow {:first-step first-step
                                :last-step last-step
