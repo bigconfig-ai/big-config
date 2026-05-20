@@ -393,7 +393,8 @@ clojure -Tbig-config package \
   The <code>package</code> template generates OpenTofu compute workflows for
   <code>hcloud</code>, <code>oci</code>, <code>digitalocean</code>, and <code>no-infra</code>,
   optional <code>tofu-backend</code> state configuration, ping-only Ansible workflows,
-  and <code>bb validate</code> / <code>bb describe</code> tasks.
+  and validation/description helpers that can be wired into composite workflows as
+  <code>validate</code> / <code>describe</code> steps.
 </p>
 <p>Versions follow <code>0.3.&lt;git-commit-count&gt;</code>.</p>
 </section>
@@ -534,7 +535,7 @@ bb tofu:apply:-auto-approve tofu:destroy:-auto-approve
 <p>
   The set of recognized step keywords lives in a dynamic var
   <code>workflow/*parse-args-steps*</code>. Default value:
-  <code>#{:lock :git-check :render :create :delete :exec :git-push :unlock-any}</code>.
+  <code>#{:lock :git-check :render :create :delete :validate :describe :exec :git-push :unlock-any}</code>.
   Unrecognized tokens are treated as shell commands and routed through the implicit
   <code>:exec</code> step.
 </p>
@@ -669,7 +670,7 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
     </tr>
     <tr>
       <td><strong>comp-workflow</strong></td>
-      <td>Sequences multiple tool workflows into a unified lifecycle (<code>create</code>, <code>delete</code>). Built with <code>workflow/-&gt;workflow*</code>.</td>
+      <td>Sequences multiple tool workflows into a unified lifecycle (<code>create</code>, <code>delete</code>) and can expose workflow-level <code>validate</code> / <code>describe</code> hooks. Built with <code>workflow/-&gt;workflow*</code>.</td>
     </tr>
     <tr>
       <td><strong>system-workflow</strong></td>
@@ -706,7 +707,7 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
             :task (wf/tofu* *command-line-args*)}
   ansible  {:doc  "bb ansible render -- ansible-playbook main.yml"
             :task (wf/ansible* *command-line-args*)}
-  resource {:doc  "bb resource create"
+  resource {:doc  "bb resource validate | bb resource describe | bb resource create | bb resource delete"
             :task (wf/resource* *command-line-args*)}}}</code></pre>
 
 <h3>Composite workflow</h3>
@@ -743,10 +744,20 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
     :last-step  ::end-create-or-delete
     :pipeline   [::tool/tofu ["render tofu:destroy:-auto-approve"]]}))
 
+(defn validate [_step-fns opts]
+  ;; perform checks and return opts with ::bc/exit / ::bc/err
+  (core/ok opts))
+
+(defn describe [_step-fns opts]
+  ;; print/report current resource state
+  (core/ok opts))
+
 (defn resource
   [step-fns opts]
   (let [opts (merge {::workflow/create-fn resource-create
-                     ::workflow/delete-fn resource-delete}
+                     ::workflow/delete-fn resource-delete
+                     ::workflow/validate-fn validate
+                     ::workflow/describe-fn describe}
                     opts)
         wf (core/->workflow
             {:first-step ::start
@@ -823,6 +834,8 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
   <tbody>
     <tr><td><code>create</code></td><td>Invokes one or more tool workflows via <code>::create-fn</code>.</td></tr>
     <tr><td><code>delete</code></td><td>Invokes one or more tool workflows via <code>::delete-fn</code>.</td></tr>
+    <tr><td><code>validate</code></td><td>Runs the configured workflow step via <code>::validate-fn</code>. It is opt-in and only runs when explicitly requested.</td></tr>
+    <tr><td><code>describe</code></td><td>Runs the configured workflow step via <code>::describe-fn</code>. It is opt-in and only runs when explicitly requested.</td></tr>
     <tr><td><code>git-check</code> / <code>git-push</code> / <code>lock</code> / <code>unlock-any</code></td>
         <td>Same semantics as tool-workflow steps.</td></tr>
   </tbody>
@@ -830,12 +843,14 @@ so the first step-fn in the vector ends up <em>outermost</em>.</p>
 
 <h3><code>run-steps</code> dispatch</h3>
 <p>The dynamic workflow built by <code>workflow/run-steps</code> iterates the user-provided <code>::workflow/steps</code> vector and dispatches each step to its implementation. Steps without a namespace are auto-qualified to <code>big-config.workflow</code>.</p>
+<p><code>validate</code> and <code>describe</code> are regular workflow step functions with the shape <code>[step-fns opts] -&gt; opts</code>; they should return <code>opts</code> with <code>::bc/exit</code> / <code>::bc/err</code>.</p>
 <pre><code class="language-clojure">(workflow/run-steps
   step-fns
-  {::workflow/steps      [:render :lock :exec :unlock-any]
-   ::run/cmds            ["tofu init" "tofu plan" "tofu apply -auto-approve"]
-   ::workflow/create-fn  my-create-fn
-   ::workflow/delete-fn  my-delete-fn})</code></pre>
+  {::workflow/steps       [:validate :create :describe]
+   ::workflow/create-fn   my-create-fn
+   ::workflow/delete-fn   my-delete-fn
+   ::workflow/validate-fn my-validate-fn
+   ::workflow/describe-fn my-describe-fn})</code></pre>
 </section>
 
 <section id="render">
@@ -1201,9 +1216,10 @@ without repeating path logic.</p>
 <p>
   The generated project contains a compute-only lifecycle:
   <code>tofu</code> provisions compute, <code>ansible-local</code> pings localhost,
-  and <code>ansible</code> pings the remote host. The generated <code>bb help</code>
-  documents <code>bb joe create</code>, <code>bb joe delete</code>, <code>bb validate</code>,
-  <code>bb describe</code>, and individual tool workflows.
+  and <code>ansible</code> pings the remote host. The template includes
+  validation/description helpers; wire them into <code>::workflow/validate-fn</code>
+  and <code>::workflow/describe-fn</code> to expose commands such as
+  <code>bb joe validate</code> and <code>bb joe describe</code> as workflow steps.
 </p>
 <p>
   Templates use Selmer syntax. File names and contents are interpolated via the
@@ -1413,6 +1429,7 @@ bb    test-bb-task                                 # BigConfig system tests</cod
   <li>Add BigConfig Store (Redis-backed event-sourcing, fork of <code>prevayler-clj</code>).</li>
   <li>Add BigConfig System as an alternative to Integrant.</li>
   <li>Add BigConfig Workflow for composing automation units into pipelines.</li>
+  <li>Add explicit <code>validate</code> / <code>describe</code> workflow steps via <code>::workflow/validate-fn</code> / <code>::workflow/describe-fn</code>.</li>
   <li>Add the <code>debug</code> macro.</li>
   <li>Refactor <code>workflow</code> to use keywords for steps in <code>parse-args</code> and <code>-&gt;workflow</code>.</li>
   <li>Rename <code>show-help</code> → <code>help</code>; mark internal tasks private.</li>
@@ -1466,7 +1483,7 @@ bb    test-bb-task                                 # BigConfig system tests</cod
   <dt><strong>tool workflow</strong></dt>
   <dd>The fundamental unit: render + execute one CLI tool.</dd>
   <dt><strong>comp workflow</strong></dt>
-  <dd>Sequences tool workflows for <code>create</code> / <code>delete</code> lifecycles.</dd>
+  <dd>Sequences tool workflows for <code>create</code> / <code>delete</code> lifecycles and can expose opt-in <code>validate</code> / <code>describe</code> hooks.</dd>
   <dt><strong>system workflow</strong></dt>
   <dd>Lifecycle orchestrator for background components (see <code>big-config.system</code>).</dd>
   <dt><strong>profile</strong></dt>

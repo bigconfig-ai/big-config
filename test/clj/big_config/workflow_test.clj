@@ -1,6 +1,7 @@
 (ns big-config.workflow-test
   (:require
    [big-config :as bc]
+   [big-config.core :as core]
    [big-config.render :as render]
    [big-config.run :as run]
    [big-config.utils :refer [debug]]
@@ -40,6 +41,8 @@
            (sut/parse-args "render tofu:init")))
     (is (= {::sut/steps [:render :exec] ::run/cmds ["tofu init"]}
            (sut/parse-args "render -- tofu init")))
+    (is (= {::sut/steps [:validate :describe] ::run/cmds []}
+           (sut/parse-args "validate describe")))
     (is (= {::sut/steps [:render :exec] ::run/cmds ["tofu init -auto-approve"]}
            (sut/parse-args ["render" "--" "tofu" "init" "-auto-approve"])))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"-- cannot be without a command"
@@ -126,4 +129,16 @@
     (let [res (sut/run-steps [] {::sut/steps [:exec]
                                  ::run/cmds ["false"]
                                  ::bc/env :repl})]
-      (is (pos? (::bc/exit res))))))
+      (is (pos? (::bc/exit res)))))
+  (testing "run-steps validate and describe"
+    (let [called (atom [])
+          res (sut/run-steps [] {::sut/steps [:validate :describe]
+                                 ::sut/validate-fn (fn [_step-fns opts]
+                                                     (swap! called conj :validate)
+                                                     (merge opts (core/ok)))
+                                 ::sut/describe-fn (fn [_step-fns opts]
+                                                     (swap! called conj :describe)
+                                                     (merge opts (core/ok)))
+                                 ::bc/env :repl})]
+      (is (= 0 (::bc/exit res)))
+      (is (= [:validate :describe] @called)))))

@@ -42,13 +42,27 @@ Override or add new behavior using the `handle-step` multimethod:
 
 ### Registering Steps in the DSL
 
-To ensure your custom step is recognized by the `bb` command (rather than being treated as a raw shell command), register it using the `*parse-args-steps*` dynamic var:
+Built-in DSL steps include `validate` and `describe`. To ensure a custom step is recognized by the `bb` command (rather than being treated as a raw shell command), register it using the `*parse-args-steps*` dynamic var:
 
 ```clojure
 (require '[big-config.workflow :as workflow])
 
 (binding [workflow/*parse-args-steps* (conj workflow/*parse-args-steps* :my-step)]
   (workflow/parse-args ["my-step" "render"]))
+```
+
+### Workflow-level validate/describe hooks
+
+Composite workflows can expose opt-in `validate` and `describe` steps by providing `::workflow/validate-fn` and `::workflow/describe-fn`. They are regular workflow step functions (`[step-fns opts] -> opts`) and should return `opts` with `::big-config/exit` / `::big-config/err`.
+
+```clojure
+(workflow/run-steps
+  step-fns
+  {::workflow/steps       [:validate :create :describe]
+   ::workflow/create-fn   create
+   ::workflow/delete-fn   delete
+   ::workflow/validate-fn validate
+   ::workflow/describe-fn describe})
 ```
 
 ## Configuration Overrides
@@ -75,7 +89,7 @@ clojure -A:deps -Tbig-config help/doc
 clojure -Tbig-config package :owner acme :repository infra :target-dir my-infra
 ```
 
-The `package` template generates a compute-only BigConfig project with OpenTofu compute providers (`hcloud`, `oci`, `digitalocean`, `no-infra`), optional `tofu-backend` state configuration, ping-only Ansible workflows, and `bb validate` / `bb describe` tasks.
+The `package` template generates a compute-only BigConfig project with OpenTofu compute providers (`hcloud`, `oci`, `digitalocean`, `no-infra`), optional `tofu-backend` state configuration, ping-only Ansible workflows, and validation/description helpers that can be wired into composite workflows as `validate` / `describe` steps.
 
 ## The BigConfig DSL (Babashka)
 
@@ -88,6 +102,8 @@ bb render lock tofu:init tofu:plan -- tofu apply -auto-approve
 
 - `render`: Generates configuration files.
 - `lock`: Acquires a pessimistic lock via Git tags.
+- `validate`: Runs the configured `::workflow/validate-fn` when present.
+- `describe`: Runs the configured `::workflow/describe-fn` when present.
 - `tofu:init`: Executes `tofu init` in the rendered directory.
 - `tofu:plan`: Executes `tofu plan` in the rendered directory.
 - `-- tofu apply -auto-approve`: Adds one raw command string to the `exec` step.

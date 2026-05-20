@@ -52,8 +52,10 @@
   #### `comp-workflow`
   | Step       | Description                                                     |
   | :----      | :----                                                           |
-  | **create**     | Invokes one or more `tool-workflows` to create a resource.        |
-  | **delete**     | Invokes one or more `tool-workflows` to delete a resource.        |
+  | **create**     | Invokes one or more `tool-workflows` to create a resource.      |
+  | **delete**     | Invokes one or more `tool-workflows` to delete a resource.      |
+  | **validate**   | Runs the configured validation function.                        |
+  | **describe**   | Runs the configured describe function.                          |
   | **git-check**  | Verifies the working directory is clean and synced with origin. |
   | **git-push**   | Pushes local commits to the remote repository.                  |
   | **lock**       | Acquires an execution lock.                                     |
@@ -150,9 +152,11 @@
   > **Note:** `prepare` injects `:target-dir` and `:target-object` into every
   > template map so templates can reference them without repeating path logic.
 
-  ### Options for `opts` and step `create` or `delete`
+  ### Options for `opts` and step `create`, `delete`, `validate`, or `describe`
   * `::create-fn` (required): The workflow to create the resource.
   * `::delete-fn` (required): The workflow to delete the resource.
+  * `::validate-fn` (optional): The workflow step to validate the resource.
+  * `::describe-fn` (optional): The workflow step to describe the resource.
   * `::create-opts` (optional): The override opts for `create`.
   * `::delete-opts` (optional): The override opts for `delete`.
 
@@ -328,11 +332,16 @@
 
 (comment (print-step-fn))
 
-(defn- resolve-fn [kw opts]
-  (let [f (get opts kw)]
-    (if (nil? f)
-      (throw (ex-info (format "`%s` not defined" kw) opts))
-      (->fn f))))
+(defn- resolve-fn
+  ([kw opts]
+   (resolve-fn kw opts ::required))
+  ([kw opts default]
+   (let [f (get opts kw)]
+     (if (nil? f)
+       (if (= ::required default)
+         (throw (ex-info (format "`%s` not defined" kw) opts))
+         default)
+       (->fn f)))))
 
 (defn select-globals [{:keys [globals] :as opts}]
   (->> (or globals [::bc/env
@@ -392,6 +401,8 @@
                                                 ::render [(partial render/templates step-fns)]
                                                 ::create [(fn [create-opts] ((resolve-fn ::create-fn opts) step-fns create-opts))]
                                                 ::delete [(fn [delete-opts] ((resolve-fn ::delete-fn opts) step-fns delete-opts))]
+                                                ::validate [(partial (resolve-fn ::validate-fn opts core/ok) step-fns)]
+                                                ::describe [(partial (resolve-fn ::describe-fn opts core/ok) step-fns)]
                                                 ::exec [(partial run/run-cmds step-fns)]
                                                 ::git-push [(partial git/git-push)]
                                                 ::unlock-any [(partial unlock/unlock-any step-fns)]
@@ -446,7 +457,7 @@
                 ::lock/owner "alberto"}))
   (-> tap-values))
 
-(def ^:dynamic *parse-args-steps* #{:lock :git-check :render :create :delete :exec :git-push :unlock-any})
+(def ^:dynamic *parse-args-steps* #{:lock :git-check :render :create :delete :validate :describe :exec :git-push :unlock-any})
 
 (defn parse-args
   "Utility functions to normalize string or vector-based arguments. See the

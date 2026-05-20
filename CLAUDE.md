@@ -79,7 +79,7 @@ Workflows thread an `opts` map through a sequence of steps. Every step must retu
 
 **Workflow types:**
 - `tool-workflow` — renders templates and executes one CLI tool
-- `comp-workflow` — sequences multiple `tool-workflows` into a lifecycle (`create`, `delete`)
+- `comp-workflow` — sequences multiple `tool-workflows` into a lifecycle (`create`, `delete`) and can expose workflow-level `validate` / `describe` hooks
 - `system-workflow` — manages start/stop of background system components
 
 #### Composition layer (subworkflow isolation)
@@ -93,6 +93,10 @@ invariant is instead **subworkflow isolation**:
   purpose-built `opts` — `create-opts`/`delete-opts`, or
   `(merge step-args globals-opts <step>-opts)` — seeded from the shared globals,
   **never** the parent's running `opts`.
+- `::validate` and `::describe` are workflow-level hooks dispatched by
+  `run-steps` through `::workflow/validate-fn` and `::workflow/describe-fn`.
+  They run only when explicitly requested in `::workflow/steps` and should
+  return the normal `opts` map with `::bc/exit` / `::bc/err`.
 - Each subworkflow's terminal `opts` is accumulated under its step key (a
   *vector* in `run-steps`, so repeated `create`/`delete` runs are kept
   side-by-side as history); only `::bc/exit` / `::bc/err` propagate upward to
@@ -114,7 +118,7 @@ Override or add steps via `big-config.pluggable/handle-step`:
   (f opts))
 ```
 
-To register a step in the DSL (so it's not treated as a raw shell command):
+Built-in DSL steps already include `:validate` and `:describe`. To register a new custom step in the DSL (so it's not treated as a raw shell command):
 
 ```clojure
 (require '[big-config.workflow :as workflow])
@@ -283,7 +287,7 @@ BigConfig ships templates for scaffolding new projects:
 
 | Template | Description |
 |---|---|
-| `package` | Compute-only BigConfig project scaffold (OpenTofu compute + tofu-backend + ping-only Ansible + validate/describe tasks) |
+| `package` | Compute-only BigConfig project scaffold (OpenTofu compute + tofu-backend + ping-only Ansible + validation/description helpers for workflow `validate` / `describe` steps) |
 | `devenv` | Nix dev environment files for Clojure/Babashka |
 | `action` | GitHub Actions CI workflow for Clojure |
 | `multi` | (deprecated) Multi-module layout |
@@ -308,6 +312,7 @@ Templates use Selmer syntax. File names and content are interpolated via the `re
 
 - **Template scaffolding CLI**: `big-config.tools` — functions `package`, `devenv`, `action`
 - **Workflow construction**: `big-config.core/->workflow`, `big-config.pluggable/->workflow*`
+- **Workflow-level hooks**: `big-config.workflow/run-steps` supports explicit `:validate` / `:describe` steps via `::workflow/validate-fn` / `::workflow/describe-fn`
 - **Step composition**: `big-config.core/->step-fn` with `:before-f` / `:after-f`
 - **Redis store**: `big-config.store/->handler`, `write!`, `restore!`
 - **System lifecycle**: `big-config.system`

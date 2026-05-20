@@ -11,13 +11,16 @@ The patch number is calculated with `git rev-list --count HEAD`
 
 ### Added
 
-- compute-only `package` template now generates `options`, `params`, `describe`, and `validation` namespaces with `bb validate` and `bb describe` tasks.
+- compute-only `package` template now generates `options`, `params`, `describe`, and `validation` namespaces with validation/description helpers.
 - `package` template supports provider-specific compute templates for `hcloud`, `oci`, `digitalocean`, and `no-infra`, plus `tofu-backend` templates for `local`, `s3`, and `r2`.
 - bump `selmer` to support template inheritance.
 - BigConfig Store is a datastore for Redis, a fork of https://github.com/klauswuestefeld/prevayler-clj .
 - BigConfig System is an alternative to Integrant to create systems with a workflow instead of a graph.
 - BigConfig Workflow to enable independent development of automation units while
   providing a structured way to compose them into complex pipelines.
+- `workflow/run-steps` supports explicit `validate` and `describe` steps via
+  `::workflow/validate-fn` and `::workflow/describe-fn`; `parse-args` recognizes
+  `validate` and `describe` as built-in step names.
 - debug macro.
 
 ### Changed
